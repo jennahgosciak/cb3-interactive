@@ -2,10 +2,9 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>Demo: Make a choropleth map</title>
+    <title>Demo Map for Community District 3</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <script src="https://api.tiles.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
-    <script src="script.js"></script>
     <link
       href="https://api.tiles.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css"
       rel="stylesheet"
@@ -13,11 +12,25 @@
     <link rel="stylesheet" href="style.css">
   </head>
   <body>
-    <div id="map"></div>
-    <div class="map-overlay" id="features">
-      <h2>US population density</h2>
-      <div id="pd"><p>Hover over a state!</p></div>
+    <div class="full-map">
+        <header>
+            <h1>CB3 Interactive Map (ACS 2019-2023)</h1>
+        </header>
+        <div class="map-container">
+            <div class="sidebar">
+                <div id="layer-toggles">
+                </div>
+                <div id="feature-info">
+                    <!-- <h4>Hover over a sector</h4> -->
+                </div>
+                <div id="legend">
+                    <h2>Legend</h2>
+                </div>
+            </div>
+            <div id="map"></div>
+        </div>
     </div>
-    <div class="map-overlay" id="legend"></div>
+    <script src="script.js"></script>
   </body>
+  
 </html>
