@@ -12,16 +12,20 @@ const map = new mapboxgl.Map({
 })
 
 const dataLayers = [
-    { id: 'totalpop', name: 'Total population (2020)', property: 'totalpop' },
-    { id: 'poverty_status_inpoverty', name: 'Median Household Income', property: 'poverty_status_inpoverty' },
-    // { id: 'nh_white_pct', name: 'Percent white (%)', property: 'pctwhite' }
+    { id: 'totalpop', name: 'Total population', property: 'totalpop' },
+    { id: 'poverty_status_inpoverty_pct', name: 'Percent in poverty (%)', property: 'poverty_status_inpoverty_pct' },
+    { id: 'nh_white_pct', name: 'Percent white (%)', property: 'nh_white_pct'},
+    {id: 'nh_black_pct', name: 'Percent Black (%)', property: 'nh_black_pct'},
+    {id: 'hisp_pct', name: 'Percent Hispanic/Latino (%)', property: 'hisp_pct' }
 ];
 
 function getColorScale(dataLayer) {
     const colorScales = {
-        'totalpop': ['#f7fbff', '#deebf7', '#c6dbef', '#9ecae1', '#6baed6', '#4292c6', '#2171b5', '#084594'],
-        'poverty_status_inpoverty': ['#f7fcf5', '#e5f5e0', '#c7e9c0', '#a1d99b', '#74c476', '#41ab5d', '#238b45', '#005a32'],
-        'pctwhite': ['#fff7ec', '#fee8c8', '#fdd49e', '#fdbb84', '#fc8d59', '#ef6548', '#d7301f', '#990000']
+        'totalpop': ['#ffffb2', '#fecc5c', '#fd8d3c', '#f03b20'],
+        'poverty_status_inpoverty_pct': ['#ffffb2', '#fecc5c', '#fd8d3c', '#f03b20'],
+        'nh_white_pct': ['#ffffb2', '#fecc5c', '#fd8d3c', '#f03b20'],
+        'nh_black_pct': ['#ffffb2', '#fecc5c', '#fd8d3c', '#f03b20'],
+        'hisp_pct': ['#ffffb2', '#fecc5c', '#fd8d3c', '#f03b20']
     };
     
     return colorScales[dataLayer] || colorScales["totalpop"];
@@ -30,9 +34,11 @@ function getColorScale(dataLayer) {
 // Value ranges for each data type
 function getValueSteps(dataLayer) {
     const valueSteps = {
-        'totalpop': [0, 5000, 10000, 20000, 30000, 40000, 50000, 70000],
-        'poverty_status_inpoverty': [0, 25000, 50000, 75000, 100000, 125000, 150000, 200000],
-        'pctwhite': [0, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70]
+        'totalpop': [0, 10000, 15000, 20000, 25000],
+        'poverty_status_inpoverty_pct': [0, 0.1, 0.2, 0.3, 0.4],
+        'nh_white_pct': [0, 0.15, 0.4, 0.5, 0.6],
+        'nh_black_pct': [0, 0.04, 0.08, 0.12, 0.18],
+        'hisp_pct': [0, 0.1, 0.2, 0.3, 0.4],
     };
     
     return valueSteps[dataLayer] || valueSteps["totalpop"];
@@ -58,10 +64,6 @@ function addChoroplethLayer(id, name, property) {
                 steps[1], colorScale[1],
                 steps[2], colorScale[2],
                 steps[3], colorScale[3],
-                steps[4], colorScale[4],
-                steps[5], colorScale[5],
-                steps[6], colorScale[6],
-                steps[7], colorScale[7]
             ],
             'fill-opacity': 0.75,
             'fill-outline-color': '#000'
@@ -155,7 +157,11 @@ function updateLegend() {
             colorBox.style.backgroundColor = colorScale[i];
             
             const label = document.createElement('span');
-            label.textContent = `${steps[i].toLocaleString()} - ${steps[i+1].toLocaleString()}`;
+            if (layer.id=='totalpop') {
+                label.textContent = `${steps[i].toLocaleString()} - ${steps[i+1].toLocaleString()}`;
+            } else {
+                label.textContent = `${(steps[i]*100).toLocaleString()}% - ${(steps[i+1]*100).toLocaleString()}%`;
+            }
             
             item.appendChild(colorBox);
             item.appendChild(label);
@@ -171,8 +177,12 @@ function updateLegend() {
         lastColorBox.style.backgroundColor = colorScale[colorScale.length - 1];
         
         const lastLabel = document.createElement('span');
-        lastLabel.textContent = `${steps[steps.length - 1].toLocaleString()}+`;
-        
+        if (layer.id=='totalpop') {
+            lastLabel.textContent = `${steps[steps.length - 1].toLocaleString()}+`;
+        } else {
+            lastLabel.textContent = `${(steps[steps.length - 1]*100).toLocaleString()}%+`;
+        }
+
         lastItem.appendChild(lastColorBox);
         lastItem.appendChild(lastLabel);
         layerSection.appendChild(lastItem);
