@@ -186,7 +186,7 @@ map.on("load", () => {
   // make a pointer cursor
   map.getCanvas().style.cursor = "default"
 
-  // Add data
+  // add data
     map.addSource('cb3-data', {
         type: 'geojson',
         data: "data/acs_2023_mapbox.geojson"
@@ -205,15 +205,15 @@ map.on("load", () => {
         }
     });
 
-    // Add choropleth layers
+    // add each layer
     dataLayers.forEach(layer => {
         addChoroplethLayer(layer.id, layer.name, layer.property);
     });
 
-    // // Set up layer toggle controls
+    // set up layer toggles
     setupLayerToggles();
     
-    // Add hover interaction
+    // add hover
     let hoveredFeatureId = null;
 
     map.on('mousemove', (e) => {
@@ -231,7 +231,7 @@ map.on("load", () => {
             );
         }
         
-        // Update hover state
+        // update hover state based on ID
         if (features.length == 1) {
             hoveredFeatureId = features[0].id;
             console.log(hoveredFeatureId)
@@ -254,7 +254,6 @@ map.on("load", () => {
             );
         }
         hoveredFeatureId = null;
-        // updateFeatureInfo(null);
     });
     // Add navigation controls to the map
     map.addControl(new mapboxgl.NavigationControl(), 'top-right');
