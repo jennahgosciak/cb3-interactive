@@ -2,6 +2,14 @@ console.log("Initialize")
 // define access token
 mapboxgl.accessToken = "pk.eyJ1Ijoiamdvc2NpYWsiLCJhIjoiY2t3cG5vanB5MGVwMjJuczJrMXI4MzlsdSJ9.TS0iy75tU2Dam19zeMjv7Q"
 
+// create popup
+const popup = new mapboxgl.Popup({
+    closeButton: false,
+    closeOnClick: false
+});
+
+let hoveredFeatureId = null;
+
 // create map
 const map = new mapboxgl.Map({
   container: "map", // container id
@@ -29,7 +37,8 @@ const dataLayers = [
     {id: 'total_bachelorsgradproff_pct', name : "Bachelor's, Graduate, or Professional Degree (%)",
         property: 'total_bachelorsgradproff_pct'
     },
-    {id: 'hh_gt65_pct', name: 'Households with at least one member over 65', property: 'hh_gt65_pct'}
+    {id: 'hh_gt65_pct', name: 'Households with at least one member over 65', property: 'hh_gt65_pct'},
+    {id: 'hh_lt18_pct', name: 'Households with at least one member under 18', property: 'hh_lt18_pct'}
 ];
 
 function getColorScale(dataLayer) {
@@ -50,6 +59,7 @@ function getColorScale(dataLayer) {
         'renter_occ_pct': ['#ffffb2', '#fecc5c', '#fd8d3c', '#f03b20'],
         'total_bachelorsgradproff_pct': ['#ffffb2', '#fecc5c', '#fd8d3c', '#f03b20'],
         'hh_gt65_pct': ['#ffffb2', '#fecc5c', '#fd8d3c', '#f03b20'],
+        'hh_lt18_pct': ['#ffffb2', '#fecc5c', '#fd8d3c', '#f03b20'],
     };
     
     return colorScales[dataLayer] || colorScales["nh_white_pct"];
@@ -74,6 +84,7 @@ function getValueSteps(dataLayer) {
         'renter_occ_pct': [0, 0.8, 0.85, 0.86, 0.9],
         'total_bachelorsgradproff_pct': [0, 0.2, 0.4, 0.5, 0.7],
         'hh_gt65_pct': [0, 0.24, 0.36, 0.41, 0.5],
+        'hh_lt18_pct': [0, 0.07, 0.15, 0.2, 0.5],
     };
     
     return valueSteps[dataLayer] || valueSteps["nh_white_pct"];
@@ -85,6 +96,7 @@ function addChoroplethLayer(id, name, property) {
     console.log(id)
     console.log(name)
     console.log(property)
+
     map.addLayer({
         'id': id,
         'type': 'fill',
@@ -115,8 +127,9 @@ function addChoroplethLayer(id, name, property) {
             'visibility': 'none'
         },
         'paint': {
-            'line-width':  
-             ['case', ['boolean', ['feature-state','hover'], false], 3, 0]
+            'line-color': '#484848',  // Bright red
+            'line-width': ['case', ['boolean', ['feature-state','hover'], false], 3, 0],
+            'line-opacity': 1
         }
     });
 }
@@ -185,6 +198,55 @@ function addEnvironmentalJusticeLayer() {
     });
 }
 
+function addNYCHALayer() {
+    console.log('adding nycha')
+    map.addLayer({
+        'id': 'nycha-data',
+        'type': 'fill',
+        'source': 'nycha',
+        'layout': {
+            'visibility': 'none'
+        },
+        'paint': {
+            'fill-color': '#8C2232', 
+            'fill-opacity': 0.8,
+            'fill-outline-color': '#006400'
+        },
+    });
+}
+
+function addSec8Layer() {
+    map.addLayer({
+        'id': 'sec8-data',
+        'type': 'fill',
+        'source': 'sec8',
+        'layout': {
+            'visibility': 'none'
+        },
+        'paint': {
+            'fill-color': '#807BA1', 
+            'fill-opacity': 0.8,
+            'fill-outline-color': '#006400'
+        },
+    });
+}
+
+function addParksLayer() {
+    map.addLayer({
+        'id': 'parks-data',
+        'type': 'fill',
+        'source': 'parks',
+        'layout': {
+            'visibility': 'none'
+        },
+        'paint': {
+            'fill-color': '#8CC75F', 
+            'fill-opacity': 0.8,
+            'fill-outline-color': '#006400'
+        },
+    });
+}
+
 const dataSources = {
     '2018': "data/acs_2018_mapbox.geojson",
     '2023': "data/acs_2023_mapbox.geojson"
@@ -223,9 +285,10 @@ const dataSources = {
     });
 
     if (activeLayerId) {
+        console.log('updating hover')
         map.setLayoutProperty(activeLayerId, 'visibility', 'visible');
-        map.setLayoutProperty(`${activeLayerId}-text`, 'visibility', 'visible');
         map.setLayoutProperty(`${activeLayerId}-hover`, 'visibility', 'visible');
+        map.setLayoutProperty(`${activeLayerId}-text`, 'visibility', 'visible');
         
         // Also update the dropdown selection to match
         const layerDropdown = document.getElementById('layer-dropdown');
@@ -253,6 +316,14 @@ function setupLayerToggles() {
     layerSelect.id = 'layer-dropdown';
     layerSelect.className = 'layer-dropdown';
 
+    // Add these CSS styles to handle long text
+    layerSelect.style.width = '100%';             // Make dropdown full width of container
+    layerSelect.style.maxWidth = '250px';         // Set maximum width
+    layerSelect.style.overflow = 'hidden';        // Hide overflow
+    layerSelect.style.textOverflow = 'ellipsis';  // Add ellipsis for text that's too long
+    layerSelect.style.fontSize = '14px';          // Reduce font size from default
+
+
     const defaultOption = document.createElement('option');
     defaultOption.value = '';
     defaultOption.textContent = 'Select a layer';
@@ -266,15 +337,6 @@ function setupLayerToggles() {
         option.value = layer.id;
         option.textContent = layer.name;
         layerSelect.appendChild(option);
-
-        // console.log(layer.id)
-        // const toggle = document.createElement('div');
-        // toggle.className = 'toggle';
-        
-        // const input = document.createElement('input');
-        // input.type = 'checkbox';
-        // input.id = layer.id;
-        
     });
     layerSelect.addEventListener('change', (e) => {
 
@@ -289,8 +351,8 @@ function setupLayerToggles() {
         const selectedLayerId = e.target.value;
         if (selectedLayerId) {
             map.setLayoutProperty(selectedLayerId, 'visibility', 'visible');
-            map.setLayoutProperty(`${selectedLayerId}-text`, 'visibility', 'visible');
             map.setLayoutProperty(`${selectedLayerId}-hover`, 'visibility', 'visible');
+            map.setLayoutProperty(`${selectedLayerId}-text`, 'visibility', 'visible');
         }
         
         updateLegend();
@@ -298,33 +360,45 @@ function setupLayerToggles() {
     
     toggleContainer.appendChild(layerSelect);
 
-    // Add spacing
     const spacer = document.createElement('div');
     spacer.style.height = '20px';
     toggleContainer.appendChild(spacer);
     
-    // Add environmental justice checkbox
-    const ejToggleContainer = document.createElement('div');
-    ejToggleContainer.className = 'toggle';
-    
-    const ejCheckbox = document.createElement('input');
-    ejCheckbox.type = 'checkbox';
-    ejCheckbox.id = 'ej-toggle';
-    
-    const ejLabel = document.createElement('label');
-    ejLabel.htmlFor = 'ej-toggle';
-    ejLabel.textContent = 'Environmental Justice Area';
-    ejLabel.style.color = 'white';
-    ejLabel.style.marginLeft = '8px';
-    
-    ejCheckbox.addEventListener('change', function() {
-        const visibility = this.checked ? 'visible' : 'none';
-        map.setLayoutProperty('ej-area', 'visibility', visibility);
+    // Define the additional layers to toggle
+    const additionalLayers = [
+        { id: 'ej', label: 'Environmental Justice Area', layers: ['ej-area'] },
+        { id: 'parks', label: 'Parks', layers: ['parks-data'] },
+        { id: 'nycha', label: 'NYCHA Housing', layers: ['nycha-data'] },
+        { id: 'sec8', label: 'Section 8 Housing', layers: ['sec8-data'] }
+    ];
+
+    additionalLayers.forEach(layerInfo => {
+        const toggleContainer = document.createElement('div');
+        toggleContainer.className = 'toggle';
+        
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = `${layerInfo.id}-toggle`;
+        
+        const label = document.createElement('label');
+        label.htmlFor = `${layerInfo.id}-toggle`;
+        label.textContent = layerInfo.label;
+        label.style.color = 'white';
+        label.style.marginLeft = '8px';
+        
+        checkbox.addEventListener('change', function() {
+            const visibility = this.checked ? 'visible' : 'none';
+            
+            // Set visibility for associated layers
+            layerInfo.layers.forEach(layer => {
+                map.setLayoutProperty(layer, 'visibility', visibility);
+            });
+        });
+        
+        toggleContainer.appendChild(checkbox);
+        toggleContainer.appendChild(label);
+        document.getElementById('layer-toggles').appendChild(toggleContainer);
     });
-    
-    ejToggleContainer.appendChild(ejCheckbox);
-    ejToggleContainer.appendChild(ejLabel);
-    toggleContainer.appendChild(ejToggleContainer);
 }
 
 // Create and update the legend based on visible layers
@@ -404,18 +478,36 @@ function updateLegend() {
 
 // wait for map to load before adjusting it
 map.on("load", () => {
+
+    console.log("Loaded map")
   // make a pointer cursor
   map.getCanvas().style.cursor = "default"
 
   // add data
     map.addSource('cb3-data', {
         type: 'geojson',
-        data: dataSources[activeYear]
+        data: dataSources[activeYear],
+        promoteId: 'sectors' 
     });
 
     map.addSource('ej-data', {
         type: 'geojson',
         data: "data/dac_area.geojson"
+    })
+
+    map.addSource('parks', {
+        type: 'geojson',
+        data: "data/parks.geojson"
+    })
+
+    map.addSource('nycha', {
+        type: 'geojson',
+        data: "data/nycha.geojson"
+    })
+
+    map.addSource('sec8', {
+        type: 'geojson',
+        data: "data/sec8.geojson"
     })
 
     map.addLayer({
@@ -437,55 +529,88 @@ map.on("load", () => {
         addChoroplethLayer(layer.id, layer.name, layer.property);
     });
     addEnvironmentalJusticeLayer();
+    addParksLayer();
+    addNYCHALayer();
+    addSec8Layer();
     dataLayers.forEach(layer => {
         addTextLayer(layer.id, layer.name, layer.property);
     });
 
     // set up layer toggles
     setupLayerToggles();
-    
-    // add hover
-    let hoveredFeatureId = null;
 
     map.on('mousemove', (e) => {
-        // Find features at pointer
+        const visibleLayers = dataLayers.filter(layer => 
+            map.getLayoutProperty(layer.id, 'visibility') === 'visible'
+        );
+        
+        if (visibleLayers.length === 0) {
+            console.log("No visible layers found");
+            return;
+        }
+
         const features = map.queryRenderedFeatures(e.point, {
-            layers: dataLayers.map(layer => layer.id)
+            layers: visibleLayers.map(layer => layer.id)
         });
-        console.log(features)
-       
-        // Reset hover state
+        
         if (hoveredFeatureId !== null) {
+            console.log("Resetting hover state for ID:", hoveredFeatureId);
             map.setFeatureState(
                 { source: 'cb3-data', id: hoveredFeatureId },
                 { hover: false }
             );
-        }
-        
-        // update hover state based on ID
-        if (features.length == 1) {
-            hoveredFeatureId = features[0].id;
-            console.log(hoveredFeatureId)
-            map.setFeatureState(
-                { source: 'cb3-data', id: hoveredFeatureId },
-                { hover: true}
-            );
-
-        } else {
             hoveredFeatureId = null;
         }
-    });
-    
-    // Reset hover state when mouse leaves the map
-    map.on('mouseout', () => {
-        if (hoveredFeatureId !== null) {
-            map.setFeatureState(
-                { source: 'cb3-data', id: hoveredFeatureId },
-                { hover: false }
-            );
+
+        // Update hover state based on feature
+        if (features.length > 0) {
+            const feature = features[0];
+            
+            hoveredFeatureId = feature.properties.sectors
+            
+            if (hoveredFeatureId !== null && hoveredFeatureId !== undefined) {
+                map.setFeatureState(
+                    { source: 'cb3-data', id: hoveredFeatureId },
+                    { hover: true }
+                );
+                
+                // Create popup
+                const activeLayer = visibleLayers[0];
+                const properties = feature.properties;
+                
+                // Format value based on property type
+                let value;
+                if (activeLayer.property === 'mean_income' || activeLayer.property === 'totalpop') {
+                    value = Number(properties[activeLayer.property]).toLocaleString();
+                    if (activeLayer.property === 'mean_income') {
+                        value = '$' + value;
+                    }
+                } else {
+                    value = (Number(properties[activeLayer.property]) * 100).toFixed(1) + '%';
+                }
+                
+                // Create popup content
+                const popupContent = `
+                    <div class="popup-content">
+                        <h4>Sector: ${properties.sectors}</h4>
+                        <p><strong>${activeLayer.name}:</strong> ${value}</p>
+                    </div>
+                `;
+                
+                // Set popup position and content
+                popup.setLngLat(e.lngLat)
+                    .setHTML(popupContent);
+                    
+                if (!popup._map) {
+                    popup.addTo(map);
+                }
+            }
+        } else {
+            console.log("No features found at cursor position");
+            popup.remove();
         }
-        hoveredFeatureId = null;
     });
+
     // Add navigation controls to the map
     map.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
