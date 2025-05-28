@@ -22,15 +22,15 @@ const map = new mapboxgl.Map({
 const dataLayers = [
     { id: 'totalpop', name: 'Total population', property: 'totalpop' },
     {id: 'totalpop_over75_pct', name: 'Total population over 75 (%)', property: 'totalpop_over75_pct'},
-    { id: 'poverty_status_inpoverty_pct', name: 'Percent in poverty (%)', property: 'poverty_status_inpoverty_pct' },
+    { id: 'poverty_status_inpoverty_pct', name: 'In poverty (%)', property: 'poverty_status_inpoverty_pct' },
     {id: 'inpoverty_75over_pct', name: 'In poverty, 75+ (%)', property: 'inpoverty_75over_pct'},
-    { id: 'nh_white_pct', name: 'Percent white (%)', property: 'nh_white_pct'},
-    {id: 'nh_black_pct', name: 'Percent Black (%)', property: 'nh_black_pct'},
-    {id: 'nh_asian_pct', name: 'Percent Asian (%)', property: 'nh_asian_pct'},
-    {id: 'nh_nhpi_pct', name: 'Percent NHPI (%)', property: 'nh_nhpi_pct'},
-    {id: 'nh_aian_pct', name: 'Percent American Indian or Alaskan Native (%)', property: 'nh_aian_pct'},
-    {id: 'nh_other_pct', name: 'Percent other race (%)', property: 'nh_other_pct'},
-    {id: 'hisp_pct', name: 'Percent Hispanic/Latino (%)', property: 'hisp_pct'},
+    { id: 'nh_white_pct', name: 'White population (%)', property: 'nh_white_pct'},
+    {id: 'nh_black_pct', name: 'Black population population (%)', property: 'nh_black_pct'},
+    {id: 'nh_asian_pct', name: 'Asian population (%)', property: 'nh_asian_pct'},
+    {id: 'nh_nhpi_pct', name: 'NHPI population (%)', property: 'nh_nhpi_pct'},
+    {id: 'nh_aian_pct', name: 'American Indian or Alaskan Native population (%)', property: 'nh_aian_pct'},
+    {id: 'nh_other_pct', name: 'Other race population (%)', property: 'nh_other_pct'},
+    {id: 'hisp_pct', name: 'Hispanic/Latino population (%)', property: 'hisp_pct'},
     {id: 'mean_income', name: 'Mean income', property: 'mean_income'},
     {id: 'total_foreign_pct', name: 'Total foreign born (%)', property: 'total_foreign_pct'},
     {id: 'renter_occ_pct', name: 'Renter occupied households (%)', property: 'renter_occ_pct'},
@@ -248,6 +248,7 @@ function addParksLayer() {
 }
 
 const dataSources = {
+    '2013': "data/acs_2013_mapbox.geojson",
     '2018': "data/acs_2018_mapbox.geojson",
     '2023': "data/acs_2023_mapbox.geojson"
   };
@@ -264,6 +265,7 @@ const dataSources = {
     console.log(activeYear)
     
     // Update button states
+    document.getElementById('toggle-2013').classList.toggle('active', year === '2013');
     document.getElementById('toggle-2018').classList.toggle('active', year === '2018');
     document.getElementById('toggle-2023').classList.toggle('active', year === '2023');
     
@@ -580,23 +582,67 @@ map.on("load", () => {
                 
                 // Format value based on property type
                 let value;
+                let pctDiff_col;
+                let pctDiff_value;
+                let pctChange_col;
+                let pctChange_value;
+                let number_col;
+                let number_value;
                 if (activeLayer.property === 'mean_income' || activeLayer.property === 'totalpop') {
                     value = Number(properties[activeLayer.property]).toLocaleString();
                     if (activeLayer.property === 'mean_income') {
                         value = '$' + value;
                     }
+
+                    pctChange_col = activeLayer.property + '_change'; 
+                    pctChange_value = (Number(properties[pctChange_col]) * 100).toFixed(1) + '%';
                 } else {
                     value = (Number(properties[activeLayer.property]) * 100).toFixed(1) + '%';
+                    // get percent change and percent diff columns
+                    pctDiff_col = activeLayer.property + '_diff'; 
+                    pctDiff_value = (Number(properties[pctDiff_col]) * 100).toFixed(1) + '%';
+                    
+                    pctChange_col = activeLayer.property + '_change'; 
+                    pctChange_value = (Number(properties[pctChange_col]) * 100).toFixed(1) + '%';
+                    
+                    number_col = activeLayer.property.replace('_pct', '');
+                    number_value = properties[number_col].toLocaleString();
+                    
+                    value = number_value + '\n(' + value + ')';
                 }
+                console.log(properties["nh_black_pct_diff"])
                 
                 // Create popup content
-                const popupContent = `
+                let popupContent = `
                     <div class="popup-content">
                         <h4>Sector: ${properties.sectors}</h4>
                         <p><strong>${activeLayer.name}:</strong> ${value}</p>
-                    </div>
                 `;
+
+                // Add conditional content for 2019-2023 data
+                console.log(activeYear)
+                if (activeYear == '2023' && activeLayer.property === 'mean_income' || activeLayer.property === 'totalpop') {
+                    popupContent += `
+                        <p class="year-specific-info">Change from 2014-2018: ${pctChange_value}</p>
+                    `;
+                }  else if (activeYear == '2023') {
+                    popupContent += `
+                        <p class="year-specific-info">Change from 2014-2018: ${pctChange_value}</p>
+                        <p class="year-specific-info">Percentage point difference: ${pctDiff_value}</p>
+                    `;
+                } else if (activeYear == '2018' && activeLayer.property === 'mean_income' || activeLayer.property === 'totalpop') {
+                    popupContent += `
+                        <p class="year-specific-info">Change from 2009-2013: ${pctChange_value}</p>
+                    `;
+                } else if (activeYear == '2018') {
+                    popupContent += `
+                        <p class="year-specific-info">Change from 2009-2013: ${pctChange_value}</p>
+                        <p class="year-specific-info">Percentage point difference: ${pctDiff_value}</p>
+                    `;
+                }
                 
+                popupContent += `</div>`;
+
                 // Set popup position and content
                 popup.setLngLat(e.lngLat)
                     .setHTML(popupContent);
@@ -614,6 +660,10 @@ map.on("load", () => {
     // Add navigation controls to the map
     map.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
+    document.getElementById('toggle-2013').addEventListener('click', function() {
+        switchYear('2013');
+    });
+    
     document.getElementById('toggle-2018').addEventListener('click', function() {
         switchYear('2018');
     });
