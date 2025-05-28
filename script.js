@@ -610,7 +610,6 @@ map.on("load", () => {
                     
                     value = number_value + '\n(' + value + ')';
                 }
-                console.log(properties["nh_black_pct_diff"])
                 
                 // Create popup content
                 let popupContent = `
