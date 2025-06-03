@@ -1,0 +1,8 @@
+{
+"type": "FeatureCollection",
+"name": "ml",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "Address": "100 CHERRY STREET", "OwnerName": "KVI MEZZ CORP." }, "geometry": { "type": "MultiPolygon", "coordinates": [ [ [ [ -73.994354063763467, 40.711506282614636 ], [ -73.994225179435162, 40.710620605482241 ], [ -73.996363457651981, 40.710289008174236 ], [ -73.996514346822622, 40.710854882373667 ], [ -73.996636569666123, 40.711313238936341 ], [ -73.994354063763467, 40.711506282614636 ] ] ] ] } }
+]
+}

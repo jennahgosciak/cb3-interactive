@@ -9,6 +9,8 @@ const popup = new mapboxgl.Popup({
 });
 
 let hoveredFeatureId = null;
+let currentHoveredLayer = null;
+let currentHoveredFeature = null;
 
 // create map
 const map = new mapboxgl.Map({
@@ -25,7 +27,7 @@ const dataLayers = [
     { id: 'poverty_status_inpoverty_pct', name: 'In poverty (%)', property: 'poverty_status_inpoverty_pct' },
     {id: 'inpoverty_75over_pct', name: 'In poverty, 75+ (%)', property: 'inpoverty_75over_pct'},
     { id: 'nh_white_pct', name: 'White population (%)', property: 'nh_white_pct'},
-    {id: 'nh_black_pct', name: 'Black population population (%)', property: 'nh_black_pct'},
+    {id: 'nh_black_pct', name: 'Black population (%)', property: 'nh_black_pct'},
     {id: 'nh_asian_pct', name: 'Asian population (%)', property: 'nh_asian_pct'},
     {id: 'nh_nhpi_pct', name: 'NHPI population (%)', property: 'nh_nhpi_pct'},
     {id: 'nh_aian_pct', name: 'American Indian or Alaskan Native population (%)', property: 'nh_aian_pct'},
@@ -38,7 +40,9 @@ const dataLayers = [
         property: 'total_bachelorsgradproff_pct'
     },
     {id: 'hh_gt65_pct', name: 'Households with at least one member over 65', property: 'hh_gt65_pct'},
-    {id: 'hh_lt18_pct', name: 'Households with at least one member under 18', property: 'hh_lt18_pct'}
+    {id: 'hh_lt18_pct', name: 'Households with at least one member under 18', property: 'hh_lt18_pct'},
+    {id: 'number_of_persons_injured', name: 'Monthly average injured in motor vehicle collisons YTD', property: 'number_of_persons_injured'},
+    {id: 'number_of_persons_killed', name: 'Monthly average killed in motor vehicle collisons YTD', property: 'number_of_persons_killed'}
 ];
 
 function getColorScale(dataLayer) {
@@ -60,6 +64,8 @@ function getColorScale(dataLayer) {
         'total_bachelorsgradproff_pct': ['#ffffb2', '#fecc5c', '#fd8d3c', '#f03b20'],
         'hh_gt65_pct': ['#ffffb2', '#fecc5c', '#fd8d3c', '#f03b20'],
         'hh_lt18_pct': ['#ffffb2', '#fecc5c', '#fd8d3c', '#f03b20'],
+        'number_of_persons_injured': ['#ffffb2', '#fecc5c', '#fd8d3c', '#f03b20'],
+        'number_of_persons_killed': ['#ffffb2', '#fecc5c', '#fd8d3c', '#f03b20']
     };
     
     return colorScales[dataLayer] || colorScales["nh_white_pct"];
@@ -85,6 +91,8 @@ function getValueSteps(dataLayer) {
         'total_bachelorsgradproff_pct': [0, 0.2, 0.4, 0.5, 0.7],
         'hh_gt65_pct': [0, 0.24, 0.36, 0.41, 0.5],
         'hh_lt18_pct': [0, 0.07, 0.15, 0.2, 0.5],
+        'number_of_persons_injured': [0, 2, 4, 6, 9],
+        'number_of_persons_killed': [0, 0.1, 0.2, 0.3, 1]
     };
     
     return valueSteps[dataLayer] || valueSteps["nh_white_pct"];
@@ -154,6 +162,17 @@ function addTextLayer(id, name, property) {
                         }
                     ],
                 ],
+                ['in', property, ['literal', ['number_of_persons_injured', 'number_of_persons_killed']]],
+                ['concat',
+                    ['number-format', 
+                        ['to-number', ['get', property]],
+                        {
+                            'locale': 'en-US',
+                            'min-fraction-digits': 1,
+                            'max-fraction-digits': 1
+                        }
+                    ]
+                ],
                 
                 // Second condition-output pair
                 ['>', ['get', property], 1],
@@ -220,6 +239,22 @@ function addSec8Layer() {
         'id': 'sec8-data',
         'type': 'fill',
         'source': 'sec8',
+        'layout': {
+            'visibility': 'none'
+        },
+        'paint': {
+            'fill-color': '#807BA1', 
+            'fill-opacity': 0.8,
+            'fill-outline-color': '#006400'
+        },
+    });
+}
+
+function addMLLayer() {
+    map.addLayer({
+        'id': 'ml-data',
+        'type': 'fill',
+        'source': 'ml',
         'layout': {
             'visibility': 'none'
         },
@@ -371,7 +406,8 @@ function setupLayerToggles() {
         { id: 'ej', label: 'Environmental Justice Area', layers: ['ej-area'] },
         { id: 'parks', label: 'Parks', layers: ['parks-data'] },
         { id: 'nycha', label: 'NYCHA Housing', layers: ['nycha-data'] },
-        { id: 'sec8', label: 'Section 8 Housing', layers: ['sec8-data'] }
+        { id: 'sec8', label: 'Section 8 Housing', layers: ['sec8-data'] },
+        { id: 'ml', label: 'Mitchell-Lama Housing', layers: ['ml-data'] }
     ];
 
     additionalLayers.forEach(layerInfo => {
@@ -443,7 +479,7 @@ function updateLegend() {
             colorBox.style.backgroundColor = colorScale[i];
             
             const label = document.createElement('span');
-            if (layer.id=='totalpop'|layer.id=='mean_income') {
+            if (layer.id=='totalpop'|layer.id=='mean_income'|layer.id=='number_of_persons_injured'|layer.id=='number_of_persons_killed') {
                 label.textContent = `${steps[i].toLocaleString()} - ${steps[i+1].toLocaleString()}`;
             } else {
                 label.textContent = `${(steps[i]*100).toLocaleString()}% - ${(steps[i+1]*100).toLocaleString()}%`;
@@ -464,7 +500,7 @@ function updateLegend() {
         
         const lastLabel = document.createElement('span');
         console.log(layer.id)
-        if (layer.id=='totalpop'|layer.id=='mean_income') {
+        if (layer.id=='totalpop'|layer.id=='mean_income'|layer.id=='number_of_persons_injured'|layer.id=='number_of_persons_killed') {
             lastLabel.textContent = `${steps[steps.length - 2].toLocaleString()}+`;
         } else {
             lastLabel.textContent = `${(steps[steps.length - 2]*100).toLocaleString()}%+`;
@@ -512,6 +548,11 @@ map.on("load", () => {
         data: "data/sec8.geojson"
     })
 
+    map.addSource('ml', {
+        type: 'geojson',
+        data: "data/ml.geojson"
+    })
+
     map.addLayer({
         'id': "base-layer",
         'type': 'line',
@@ -534,6 +575,7 @@ map.on("load", () => {
     addParksLayer();
     addNYCHALayer();
     addSec8Layer();
+    addMLLayer();
     dataLayers.forEach(layer => {
         addTextLayer(layer.id, layer.name, layer.property);
     });
@@ -541,119 +583,401 @@ map.on("load", () => {
     // set up layer toggles
     setupLayerToggles();
 
+    // map.on('mousemove', (e) => {
+    //     const visibleLayers = dataLayers.filter(layer => 
+    //         map.getLayoutProperty(layer.id, 'visibility') === 'visible'
+    //     );
+
+    //     // Check for additional visible layers (ML, Section 8, NYCHA, etc.)
+    //     const additionalVisibleLayers = [];
+    //     const additionalLayerIds = ['ml-data', 'sec8-data', 'nycha-data', 'parks-data', 'ej-area'];
+        
+    //     additionalLayerIds.forEach(layerId => {
+    //         if (map.getLayoutProperty(layerId, 'visibility') === 'visible') {
+    //             additionalVisibleLayers.push(layerId);
+    //         }
+    //     });
+
+    //     // Reset hover state for main data layers
+    //     if (hoveredFeatureId !== null) {
+    //         console.log("Resetting hover state for ID:", hoveredFeatureId);
+    //         map.setFeatureState(
+    //             { source: 'cb3-data', id: hoveredFeatureId },
+    //             { hover: false }
+    //         );
+    //         hoveredFeatureId = null;
+    //     }
+
+    //     // first check for additional layers
+    //     if (additionalVisibleLayers.length > 0) {
+    //         const additionalFeatures = map.queryRenderedFeatures(e.point, {
+    //             layers: additionalVisibleLayers
+    //         });
+
+    //         if (additionalFeatures.length > 0) {
+    //             const feature = additionalFeatures[0];
+    //             const layerId = feature.layer.id;
+    //             const properties = feature.properties;
+                
+    //             let popupContent = '';
+                
+    //             // customize popup
+    //             switch(layerId) {
+    //                 case 'ml-data':
+    //                     popupContent = `
+    //                         <div class="popup-content">
+    //                             <h4>Mitchell-Lama Housing</h4>
+    //                             <p><strong>Address:</strong> ${properties.Address || 'N/A'}</p>
+    //                             <p><strong>Owner:</strong> ${properties.OwnerName || 'N/A'}</p>
+    //                         </div>
+    //                     `;
+    //                     break;
+                        
+    //                 case 'sec8-data':
+    //                     popupContent = `
+    //                         <div class="popup-content">
+    //                             <h4>Section 8 Housing</h4>
+    //                             <p><strong>Address:</strong> ${properties.Address || 'N/A'}</p>
+    //                             <p><strong>Owner:</strong> ${properties.OwnerName || 'N/A'}</p>
+    //                         </div>
+    //                     `;
+    //                     break;
+                        
+    //                 case 'nycha-data':
+    //                     popupContent = `
+    //                         <div class="popup-content">
+    //                             <h4>NYCHA Housing</h4>
+    //                             <p><strong>Address:</strong> ${properties.Address || 'N/A'}</p>
+    //                             <p><strong>Owner:</strong> ${properties.OwnerName || 'N/A'}</p>
+    //                         </div>
+    //                     `;
+    //                     break;
+
+    //             }
+
+    //             // Set popup position and content
+    //             popup.setLngLat(e.lngLat)
+    //                 .setHTML(popupContent);
+                    
+    //             if (!popup._map) {
+    //                 popup.addTo(map);
+    //             }
+                
+    //             return; // Exit early, don't process main data layers
+    //         }
+    //     }
+
+    //     if (visibleLayers.length === 0) {
+    //         console.log("No visible layers found");
+    //         popup.remove();
+    //         return;
+    //     }
+
+    //     const features = map.queryRenderedFeatures(e.point, {
+    //         layers: visibleLayers.map(layer => layer.id)
+    //     });
+        
+    //     if (hoveredFeatureId !== null) {
+    //         console.log("Resetting hover state for ID:", hoveredFeatureId);
+    //         map.setFeatureState(
+    //             { source: 'cb3-data', id: hoveredFeatureId },
+    //             { hover: false }
+    //         );
+    //         hoveredFeatureId = null;
+    //     }
+
+    //     // Update hover state based on feature
+    //     if (features.length > 0) {
+    //         const feature = features[0];
+            
+    //         hoveredFeatureId = feature.properties.sectors
+            
+    //         if (hoveredFeatureId !== null && hoveredFeatureId !== undefined) {
+    //             map.setFeatureState(
+    //                 { source: 'cb3-data', id: hoveredFeatureId },
+    //                 { hover: true }
+    //             );
+                
+    //             // Create popup
+    //             const activeLayer = visibleLayers[0];
+    //             const properties = feature.properties;
+                
+    //             // Format value based on property type
+    //             let value;
+    //             let pctDiff_col;
+    //             let pctDiff_value;
+    //             let pctChange_col;
+    //             let pctChange_value;
+    //             let number_col;
+    //             let number_value;
+    //             if (activeLayer.property === 'number_of_persons_injured' || activeLayer.property === 'number_of_persons_killed') {
+    //                 number_col = activeLayer.property;
+    //                 number_value = properties[number_col].toLocaleString();
+    //                 value = number_value;
+    //             } else if (activeLayer.property === 'mean_income' || activeLayer.property === 'totalpop') {
+    //                 value = Number(properties[activeLayer.property]).toLocaleString();
+    //                 if (activeLayer.property === 'mean_income') {
+    //                     value = '$' + value;
+    //                 }
+
+    //                 pctChange_col = activeLayer.property + '_pct_change'; 
+    //                 pctChange_value = (Number(properties[pctChange_col]) * 100).toFixed(1) + '%';
+    //             } else {
+    //                 value = (Number(properties[activeLayer.property]) * 100).toFixed(1) + '%';
+    //                 // get percent change and percent diff columns
+    //                 pctDiff_col = activeLayer.property + '_diff'; 
+    //                 pctDiff_value = (Number(properties[pctDiff_col]) * 100).toFixed(1) + '%';
+                    
+    //                 pctChange_col = activeLayer.property + '_change'; 
+    //                 pctChange_value = (Number(properties[pctChange_col]) * 100).toFixed(1) + '%';
+                    
+    //                 number_col = activeLayer.property.replace('_pct', '');
+    //                 number_value = properties[number_col].toLocaleString();
+                    
+    //                 value = number_value + '\n(' + value + ')';
+    //             }
+                
+    //             // Create popup content
+    //             let popupContent = `
+    //                 <div class="popup-content">
+    //                     <h4>Sector: ${properties.sectors}</h4>
+    //                     <p><strong>${activeLayer.name}:</strong> ${value}</p>
+    //             `;
+
+    //             // Add conditional content for 2019-2023 data
+    //             console.log(activeYear)
+    //             if (activeLayer.property === 'number_of_persons_injured' || activeLayer.property === 'number_of_persons_killed') {
+                    
+    //             } else if (activeYear == '2023' && activeLayer.property === 'mean_income' || activeLayer.property === 'totalpop') {
+    //                 popupContent += `
+    //                     <p class="year-specific-info">Change from 2014-2018: ${pctChange_value}</p>
+    //                 `;
+    //             }  else if (activeYear == '2023') {
+    //                 popupContent += `
+    //                     <p class="year-specific-info">Change from 2014-2018: ${pctChange_value}</p>
+    //                     <p class="year-specific-info">Percentage point difference: ${pctDiff_value}</p>
+    //                 `;
+    //             } else if (activeYear == '2018' && activeLayer.property === 'mean_income' || activeLayer.property === 'totalpop') {
+    //                 popupContent += `
+    //                     <p class="year-specific-info">Change from 2009-2013: ${pctChange_value}</p>
+    //                 `;
+    //             } else if (activeYear == '2018') {
+    //                 popupContent += `
+    //                     <p class="year-specific-info">Change from 2009-2013: ${pctChange_value}</p>
+    //                     <p class="year-specific-info">Percentage point difference: ${pctDiff_value}</p>
+    //                 `;
+    //             }
+                
+    //             popupContent += `</div>`;
+
+    //             // Set popup position and content
+    //             popup.setLngLat(e.lngLat)
+    //                 .setHTML(popupContent);
+                    
+    //             if (!popup._map) {
+    //                 popup.addTo(map);
+    //             }
+    //         }
+    //     } else {
+    //         console.log("No features found at cursor position");
+    //         popup.remove();
+    //     }
+    // });
+
+    // Replace your existing mousemove handler with this optimized version
     map.on('mousemove', (e) => {
         const visibleLayers = dataLayers.filter(layer => 
             map.getLayoutProperty(layer.id, 'visibility') === 'visible'
         );
+
+        // Check for additional visible layers
+        const additionalVisibleLayers = [];
+        const additionalLayerIds = ['ml-data', 'sec8-data', 'nycha-data', 'parks-data', 'ej-area'];
         
-        if (visibleLayers.length === 0) {
-            console.log("No visible layers found");
-            return;
+        additionalLayerIds.forEach(layerId => {
+            if (map.getLayoutProperty(layerId, 'visibility') === 'visible') {
+                additionalVisibleLayers.push(layerId);
+            }
+        });
+
+        // Query all visible layers at once
+        const allVisibleLayers = [...additionalVisibleLayers, ...visibleLayers.map(layer => layer.id)];
+        const features = map.queryRenderedFeatures(e.point, {
+            layers: allVisibleLayers
+        });
+
+        let newHoveredFeature = null;
+        let newHoveredLayer = null;
+        let popupContent = '';
+
+        if (features.length > 0) {
+            const feature = features[0];
+            const layerId = feature.layer.id;
+            
+            // Check if this is an additional layer first (priority)
+            if (additionalLayerIds.includes(layerId)) {
+                newHoveredLayer = 'additional';
+                newHoveredFeature = `${layerId}-${feature.id || 0}`;
+                
+                const properties = feature.properties;
+                
+                switch(layerId) {
+                    case 'ml-data':
+                        popupContent = `
+                            <div class="popup-content">
+                                <h4>Mitchell-Lama Housing</h4>
+                                <p><strong>Address:</strong> ${properties.Address || 'N/A'}</p>
+                                <p><strong>Owner:</strong> ${properties.OwnerName || 'N/A'}</p>
+                            </div>
+                        `;
+                        break;
+                        
+                    case 'sec8-data':
+                        popupContent = `
+                            <div class="popup-content">
+                                <h4>Section 8 Housing</h4>
+                                <p><strong>Address:</strong> ${properties.Address || 'N/A'}</p>
+                                <p><strong>Owner:</strong> ${properties.OwnerName || 'N/A'}</p>
+                            </div>
+                        `;
+                        break;
+                        
+                    case 'nycha-data':
+                        popupContent = `
+                            <div class="popup-content">
+                                <h4>NYCHA Housing</h4>
+                                <p><strong>Address:</strong> ${properties.Address || 'N/A'}</p>
+                                <p><strong>Owner:</strong> ${properties.OwnerName || 'N/A'}</p>
+                            </div>
+                        `;
+                        break;
+                }
+            } 
+            // Check for main data layers
+            else if (visibleLayers.length > 0) {
+                newHoveredLayer = 'main';
+                newHoveredFeature = feature.properties.sectors;
+                
+                if (newHoveredFeature !== null && newHoveredFeature !== undefined) {
+                    const activeLayer = visibleLayers[0];
+                    const properties = feature.properties;
+                    
+                    // Format value based on property type
+                    let value;
+                    let pctDiff_col;
+                    let pctDiff_value;
+                    let pctChange_col;
+                    let pctChange_value;
+                    let number_col;
+                    let number_value;
+                    
+                    if (activeLayer.property === 'number_of_persons_injured' || activeLayer.property === 'number_of_persons_killed') {
+                        number_col = activeLayer.property;
+                        number_value = properties[number_col].toLocaleString();
+                        value = number_value;
+                    } else if (activeLayer.property === 'mean_income' || activeLayer.property === 'totalpop') {
+                        value = Number(properties[activeLayer.property]).toLocaleString();
+                        if (activeLayer.property === 'mean_income') {
+                            value = '$' + value;
+                        }
+                        pctChange_col = activeLayer.property + '_pct_change'; 
+                        pctChange_value = (Number(properties[pctChange_col]) * 100).toFixed(1) + '%';
+                    } else {
+                        value = (Number(properties[activeLayer.property]) * 100).toFixed(1) + '%';
+                        pctDiff_col = activeLayer.property + '_diff'; 
+                        pctDiff_value = (Number(properties[pctDiff_col]) * 100).toFixed(1) + '%';
+                        pctChange_col = activeLayer.property + '_change';
+                        pctChange_value = (Number(properties[pctChange_col]) * 100).toFixed(1) + '%';
+                        number_col = activeLayer.property.replace('_pct', '');
+                        number_value = properties[number_col].toLocaleString();
+                        value = number_value + '\n(' + value + ')';
+                    }
+                    
+                    popupContent = `
+                        <div class="popup-content">
+                            <h4>Sector: ${properties.sectors}</h4>
+                            <p><strong>${activeLayer.name}:</strong> ${value}</p>
+                    `;
+
+                    // Add conditional content
+                    if (activeLayer.property === 'number_of_persons_injured' || activeLayer.property === 'number_of_persons_killed') {
+                        // No additional info for these
+                    } else if (activeYear == '2023' && (activeLayer.property === 'mean_income' || activeLayer.property === 'totalpop')) {
+                        popupContent += `<p class="year-specific-info">Percent change from 2014-2018: ${pctChange_value}</p>`;
+                    } else if (activeYear == '2023') {
+                        popupContent += `
+                            <p class="year-specific-info">Percent change from 2014-2018: ${pctChange_value}</p>
+                            <p class="year-specific-info">Percentage point difference from 2014-2018: ${pctDiff_value}</p>
+                        `;
+                    } else if (activeYear == '2018' && (activeLayer.property === 'mean_income' || activeLayer.property === 'totalpop')) {
+                        popupContent += `<p class="year-specific-info">Change from 2009-2013: ${pctChange_value}</p>`;
+                    } else if (activeYear == '2018') {
+                        popupContent += `
+                            <p class="year-specific-info">Percent change from 2009-2013: ${pctChange_value}</p>
+                            <p class="year-specific-info">Percentage point difference from 2009-2013: ${pctDiff_value}</p>
+                        `;
+                    }
+                    
+                    popupContent += `</div>`;
+                }
+            }
         }
 
-        const features = map.queryRenderedFeatures(e.point, {
-            layers: visibleLayers.map(layer => layer.id)
-        });
+        // Only update if something actually changed
+        const featureChanged = newHoveredFeature !== currentHoveredFeature;
+        const layerChanged = newHoveredLayer !== currentHoveredLayer;
         
-        if (hoveredFeatureId !== null) {
-            console.log("Resetting hover state for ID:", hoveredFeatureId);
+        if (featureChanged || layerChanged) {
+            // Reset previous hover state only if it was a main layer feature
+            if (currentHoveredLayer === 'main' && hoveredFeatureId !== null) {
+                map.setFeatureState(
+                    { source: 'cb3-data', id: hoveredFeatureId },
+                    { hover: false }
+                );
+                hoveredFeatureId = null;
+            }
+
+            // Set new hover state
+            if (newHoveredLayer === 'main' && newHoveredFeature !== null) {
+                hoveredFeatureId = newHoveredFeature;
+                map.setFeatureState(
+                    { source: 'cb3-data', id: hoveredFeatureId },
+                    { hover: true }
+                );
+            }
+
+            // Update popup
+            if (newHoveredFeature !== null && popupContent !== '') {
+                popup.setLngLat(e.lngLat).setHTML(popupContent);
+                if (!popup._map) {
+                    popup.addTo(map);
+                }
+            } else {
+                popup.remove();
+            }
+
+            // Update tracking variables
+            currentHoveredFeature = newHoveredFeature;
+            currentHoveredLayer = newHoveredLayer;
+        } else if (newHoveredFeature !== null) {
+            // Same feature, just update popup position
+            popup.setLngLat(e.lngLat);
+        }
+    });
+
+    // Add mouseleave handler for cleaner exit behavior
+    map.on('mouseleave', () => {
+        if (currentHoveredLayer === 'main' && hoveredFeatureId !== null) {
             map.setFeatureState(
                 { source: 'cb3-data', id: hoveredFeatureId },
                 { hover: false }
             );
             hoveredFeatureId = null;
         }
-
-        // Update hover state based on feature
-        if (features.length > 0) {
-            const feature = features[0];
-            
-            hoveredFeatureId = feature.properties.sectors
-            
-            if (hoveredFeatureId !== null && hoveredFeatureId !== undefined) {
-                map.setFeatureState(
-                    { source: 'cb3-data', id: hoveredFeatureId },
-                    { hover: true }
-                );
-                
-                // Create popup
-                const activeLayer = visibleLayers[0];
-                const properties = feature.properties;
-                
-                // Format value based on property type
-                let value;
-                let pctDiff_col;
-                let pctDiff_value;
-                let pctChange_col;
-                let pctChange_value;
-                let number_col;
-                let number_value;
-                if (activeLayer.property === 'mean_income' || activeLayer.property === 'totalpop') {
-                    value = Number(properties[activeLayer.property]).toLocaleString();
-                    if (activeLayer.property === 'mean_income') {
-                        value = '$' + value;
-                    }
-
-                    pctChange_col = activeLayer.property + '_change'; 
-                    pctChange_value = (Number(properties[pctChange_col]) * 100).toFixed(1) + '%';
-                } else {
-                    value = (Number(properties[activeLayer.property]) * 100).toFixed(1) + '%';
-                    // get percent change and percent diff columns
-                    pctDiff_col = activeLayer.property + '_diff'; 
-                    pctDiff_value = (Number(properties[pctDiff_col]) * 100).toFixed(1) + '%';
-                    
-                    pctChange_col = activeLayer.property + '_change'; 
-                    pctChange_value = (Number(properties[pctChange_col]) * 100).toFixed(1) + '%';
-                    
-                    number_col = activeLayer.property.replace('_pct', '');
-                    number_value = properties[number_col].toLocaleString();
-                    
-                    value = number_value + '\n(' + value + ')';
-                }
-                
-                // Create popup content
-                let popupContent = `
-                    <div class="popup-content">
-                        <h4>Sector: ${properties.sectors}</h4>
-                        <p><strong>${activeLayer.name}:</strong> ${value}</p>
-                `;
-
-                // Add conditional content for 2019-2023 data
-                console.log(activeYear)
-                if (activeYear == '2023' && activeLayer.property === 'mean_income' || activeLayer.property === 'totalpop') {
-                    popupContent += `
-                        <p class="year-specific-info">Change from 2014-2018: ${pctChange_value}</p>
-                    `;
-                }  else if (activeYear == '2023') {
-                    popupContent += `
-                        <p class="year-specific-info">Change from 2014-2018: ${pctChange_value}</p>
-                        <p class="year-specific-info">Percentage point difference: ${pctDiff_value}</p>
-                    `;
-                } else if (activeYear == '2018' && activeLayer.property === 'mean_income' || activeLayer.property === 'totalpop') {
-                    popupContent += `
-                        <p class="year-specific-info">Change from 2009-2013: ${pctChange_value}</p>
-                    `;
-                } else if (activeYear == '2018') {
-                    popupContent += `
-                        <p class="year-specific-info">Change from 2009-2013: ${pctChange_value}</p>
-                        <p class="year-specific-info">Percentage point difference: ${pctDiff_value}</p>
-                    `;
-                }
-                
-                popupContent += `</div>`;
-
-                // Set popup position and content
-                popup.setLngLat(e.lngLat)
-                    .setHTML(popupContent);
-                    
-                if (!popup._map) {
-                    popup.addTo(map);
-                }
-            }
-        } else {
-            console.log("No features found at cursor position");
-            popup.remove();
-        }
+        
+        popup.remove();
+        currentHoveredFeature = null;
+        currentHoveredLayer = null;
     });
 
     // Add navigation controls to the map
