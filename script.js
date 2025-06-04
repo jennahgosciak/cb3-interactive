@@ -1,8 +1,8 @@
 console.log("Initialize")
-// define access token
+// define access token for mapboxgl
 mapboxgl.accessToken = "pk.eyJ1Ijoiamdvc2NpYWsiLCJhIjoiY2t3cG5vanB5MGVwMjJuczJrMXI4MzlsdSJ9.TS0iy75tU2Dam19zeMjv7Q"
 
-// create popup
+// init/create popup
 const popup = new mapboxgl.Popup({
     closeButton: false,
     closeOnClick: false
@@ -71,7 +71,7 @@ function getColorScale(dataLayer) {
     return colorScales[dataLayer] || colorScales["nh_white_pct"];
 }
 
-// Value ranges for each data type
+// set value ranges for each data type
 function getValueSteps(dataLayer) {
     const valueSteps = {
         'totalpop': [0, 10000, 15000, 20000, 25000],
@@ -126,7 +126,7 @@ function addChoroplethLayer(id, name, property) {
         }
     });
 
-    // Add hover effect with highlighting
+    // add hover effect
     map.addLayer({
         'id': `${id}-hover`,
         'type': 'line',
@@ -173,8 +173,6 @@ function addTextLayer(id, name, property) {
                         }
                     ]
                 ],
-                
-                // Second condition-output pair
                 ['>', ['get', property], 1],
                 ['concat',
                     ['number-format', 
@@ -327,7 +325,7 @@ const dataSources = {
         map.setLayoutProperty(`${activeLayerId}-hover`, 'visibility', 'visible');
         map.setLayoutProperty(`${activeLayerId}-text`, 'visibility', 'visible');
         
-        // Also update the dropdown selection to match
+        // update the dropdown selection to match
         const layerDropdown = document.getElementById('layer-dropdown');
         if (layerDropdown) {
           for (let i = 0; i < layerDropdown.options.length; i++) {
@@ -340,7 +338,7 @@ const dataSources = {
       }
 
     
-    // Update the legend
+    // legend update
     updateLegend();
   }
 
@@ -353,7 +351,7 @@ function setupLayerToggles() {
     layerSelect.id = 'layer-dropdown';
     layerSelect.className = 'layer-dropdown';
 
-    // Add these CSS styles to handle long text
+    // additional css styles
     layerSelect.style.width = '100%';             // Make dropdown full width of container
     layerSelect.style.maxWidth = '250px';         // Set maximum width
     layerSelect.style.overflow = 'hidden';        // Hide overflow
@@ -377,14 +375,14 @@ function setupLayerToggles() {
     });
     layerSelect.addEventListener('change', (e) => {
 
-        // First, hide all layers
+        // hide all layers
         dataLayers.forEach(layer => {
             map.setLayoutProperty(layer.id, 'visibility', 'none');
             map.setLayoutProperty(`${layer.id}-text`, 'visibility', 'none');
             map.setLayoutProperty(`${layer.id}-hover`, 'visibility', 'none');
         });
         
-        // Show only the selected layer
+        // show only the selected layer
         const selectedLayerId = e.target.value;
         if (selectedLayerId) {
             map.setLayoutProperty(selectedLayerId, 'visibility', 'visible');
@@ -401,7 +399,7 @@ function setupLayerToggles() {
     spacer.style.height = '20px';
     toggleContainer.appendChild(spacer);
     
-    // Define the additional layers to toggle
+    // additional layers to toggle on vs. off
     const additionalLayers = [
         { id: 'ej', label: 'Environmental Justice Area', layers: ['ej-area'] },
         { id: 'parks', label: 'Parks', layers: ['parks-data'] },
@@ -439,13 +437,13 @@ function setupLayerToggles() {
     });
 }
 
-// Create and update the legend based on visible layers
+// update legend based on visible layers
 function updateLegend() {
     console.log('Updating legend')
     const legend = document.getElementById('legend');
     legend.innerHTML = '';
     
-    // Find visible layers
+    // visible layers
     const visibleLayers = dataLayers
         .filter(layer => map.getLayoutProperty(layer.id, 'visibility') === 'visible');
     
@@ -456,7 +454,7 @@ function updateLegend() {
         return;
     }
     
-    // Create legend for each visible layer
+    // legend for each visible layer
     visibleLayers.forEach(layer => {
         const layerSection = document.createElement('div');
         layerSection.className = 'legend-section';
@@ -490,7 +488,7 @@ function updateLegend() {
             layerSection.appendChild(item);
         }
         
-        // Add the highest range
+        // add last legend item
         const lastItem = document.createElement('div');
         lastItem.className = 'legend-item';
         
@@ -583,214 +581,12 @@ map.on("load", () => {
     // set up layer toggles
     setupLayerToggles();
 
-    // map.on('mousemove', (e) => {
-    //     const visibleLayers = dataLayers.filter(layer => 
-    //         map.getLayoutProperty(layer.id, 'visibility') === 'visible'
-    //     );
-
-    //     // Check for additional visible layers (ML, Section 8, NYCHA, etc.)
-    //     const additionalVisibleLayers = [];
-    //     const additionalLayerIds = ['ml-data', 'sec8-data', 'nycha-data', 'parks-data', 'ej-area'];
-        
-    //     additionalLayerIds.forEach(layerId => {
-    //         if (map.getLayoutProperty(layerId, 'visibility') === 'visible') {
-    //             additionalVisibleLayers.push(layerId);
-    //         }
-    //     });
-
-    //     // Reset hover state for main data layers
-    //     if (hoveredFeatureId !== null) {
-    //         console.log("Resetting hover state for ID:", hoveredFeatureId);
-    //         map.setFeatureState(
-    //             { source: 'cb3-data', id: hoveredFeatureId },
-    //             { hover: false }
-    //         );
-    //         hoveredFeatureId = null;
-    //     }
-
-    //     // first check for additional layers
-    //     if (additionalVisibleLayers.length > 0) {
-    //         const additionalFeatures = map.queryRenderedFeatures(e.point, {
-    //             layers: additionalVisibleLayers
-    //         });
-
-    //         if (additionalFeatures.length > 0) {
-    //             const feature = additionalFeatures[0];
-    //             const layerId = feature.layer.id;
-    //             const properties = feature.properties;
-                
-    //             let popupContent = '';
-                
-    //             // customize popup
-    //             switch(layerId) {
-    //                 case 'ml-data':
-    //                     popupContent = `
-    //                         <div class="popup-content">
-    //                             <h4>Mitchell-Lama Housing</h4>
-    //                             <p><strong>Address:</strong> ${properties.Address || 'N/A'}</p>
-    //                             <p><strong>Owner:</strong> ${properties.OwnerName || 'N/A'}</p>
-    //                         </div>
-    //                     `;
-    //                     break;
-                        
-    //                 case 'sec8-data':
-    //                     popupContent = `
-    //                         <div class="popup-content">
-    //                             <h4>Section 8 Housing</h4>
-    //                             <p><strong>Address:</strong> ${properties.Address || 'N/A'}</p>
-    //                             <p><strong>Owner:</strong> ${properties.OwnerName || 'N/A'}</p>
-    //                         </div>
-    //                     `;
-    //                     break;
-                        
-    //                 case 'nycha-data':
-    //                     popupContent = `
-    //                         <div class="popup-content">
-    //                             <h4>NYCHA Housing</h4>
-    //                             <p><strong>Address:</strong> ${properties.Address || 'N/A'}</p>
-    //                             <p><strong>Owner:</strong> ${properties.OwnerName || 'N/A'}</p>
-    //                         </div>
-    //                     `;
-    //                     break;
-
-    //             }
-
-    //             // Set popup position and content
-    //             popup.setLngLat(e.lngLat)
-    //                 .setHTML(popupContent);
-                    
-    //             if (!popup._map) {
-    //                 popup.addTo(map);
-    //             }
-                
-    //             return; // Exit early, don't process main data layers
-    //         }
-    //     }
-
-    //     if (visibleLayers.length === 0) {
-    //         console.log("No visible layers found");
-    //         popup.remove();
-    //         return;
-    //     }
-
-    //     const features = map.queryRenderedFeatures(e.point, {
-    //         layers: visibleLayers.map(layer => layer.id)
-    //     });
-        
-    //     if (hoveredFeatureId !== null) {
-    //         console.log("Resetting hover state for ID:", hoveredFeatureId);
-    //         map.setFeatureState(
-    //             { source: 'cb3-data', id: hoveredFeatureId },
-    //             { hover: false }
-    //         );
-    //         hoveredFeatureId = null;
-    //     }
-
-    //     // Update hover state based on feature
-    //     if (features.length > 0) {
-    //         const feature = features[0];
-            
-    //         hoveredFeatureId = feature.properties.sectors
-            
-    //         if (hoveredFeatureId !== null && hoveredFeatureId !== undefined) {
-    //             map.setFeatureState(
-    //                 { source: 'cb3-data', id: hoveredFeatureId },
-    //                 { hover: true }
-    //             );
-                
-    //             // Create popup
-    //             const activeLayer = visibleLayers[0];
-    //             const properties = feature.properties;
-                
-    //             // Format value based on property type
-    //             let value;
-    //             let pctDiff_col;
-    //             let pctDiff_value;
-    //             let pctChange_col;
-    //             let pctChange_value;
-    //             let number_col;
-    //             let number_value;
-    //             if (activeLayer.property === 'number_of_persons_injured' || activeLayer.property === 'number_of_persons_killed') {
-    //                 number_col = activeLayer.property;
-    //                 number_value = properties[number_col].toLocaleString();
-    //                 value = number_value;
-    //             } else if (activeLayer.property === 'mean_income' || activeLayer.property === 'totalpop') {
-    //                 value = Number(properties[activeLayer.property]).toLocaleString();
-    //                 if (activeLayer.property === 'mean_income') {
-    //                     value = '$' + value;
-    //                 }
-
-    //                 pctChange_col = activeLayer.property + '_pct_change'; 
-    //                 pctChange_value = (Number(properties[pctChange_col]) * 100).toFixed(1) + '%';
-    //             } else {
-    //                 value = (Number(properties[activeLayer.property]) * 100).toFixed(1) + '%';
-    //                 // get percent change and percent diff columns
-    //                 pctDiff_col = activeLayer.property + '_diff'; 
-    //                 pctDiff_value = (Number(properties[pctDiff_col]) * 100).toFixed(1) + '%';
-                    
-    //                 pctChange_col = activeLayer.property + '_change'; 
-    //                 pctChange_value = (Number(properties[pctChange_col]) * 100).toFixed(1) + '%';
-                    
-    //                 number_col = activeLayer.property.replace('_pct', '');
-    //                 number_value = properties[number_col].toLocaleString();
-                    
-    //                 value = number_value + '\n(' + value + ')';
-    //             }
-                
-    //             // Create popup content
-    //             let popupContent = `
-    //                 <div class="popup-content">
-    //                     <h4>Sector: ${properties.sectors}</h4>
-    //                     <p><strong>${activeLayer.name}:</strong> ${value}</p>
-    //             `;
-
-    //             // Add conditional content for 2019-2023 data
-    //             console.log(activeYear)
-    //             if (activeLayer.property === 'number_of_persons_injured' || activeLayer.property === 'number_of_persons_killed') {
-                    
-    //             } else if (activeYear == '2023' && activeLayer.property === 'mean_income' || activeLayer.property === 'totalpop') {
-    //                 popupContent += `
-    //                     <p class="year-specific-info">Change from 2014-2018: ${pctChange_value}</p>
-    //                 `;
-    //             }  else if (activeYear == '2023') {
-    //                 popupContent += `
-    //                     <p class="year-specific-info">Change from 2014-2018: ${pctChange_value}</p>
-    //                     <p class="year-specific-info">Percentage point difference: ${pctDiff_value}</p>
-    //                 `;
-    //             } else if (activeYear == '2018' && activeLayer.property === 'mean_income' || activeLayer.property === 'totalpop') {
-    //                 popupContent += `
-    //                     <p class="year-specific-info">Change from 2009-2013: ${pctChange_value}</p>
-    //                 `;
-    //             } else if (activeYear == '2018') {
-    //                 popupContent += `
-    //                     <p class="year-specific-info">Change from 2009-2013: ${pctChange_value}</p>
-    //                     <p class="year-specific-info">Percentage point difference: ${pctDiff_value}</p>
-    //                 `;
-    //             }
-                
-    //             popupContent += `</div>`;
-
-    //             // Set popup position and content
-    //             popup.setLngLat(e.lngLat)
-    //                 .setHTML(popupContent);
-                    
-    //             if (!popup._map) {
-    //                 popup.addTo(map);
-    //             }
-    //         }
-    //     } else {
-    //         console.log("No features found at cursor position");
-    //         popup.remove();
-    //     }
-    // });
-
-    // Replace your existing mousemove handler with this optimized version
     map.on('mousemove', (e) => {
         const visibleLayers = dataLayers.filter(layer => 
             map.getLayoutProperty(layer.id, 'visibility') === 'visible'
         );
 
-        // Check for additional visible layers
+        // check for visibility of additional layers
         const additionalVisibleLayers = [];
         const additionalLayerIds = ['ml-data', 'sec8-data', 'nycha-data', 'parks-data', 'ej-area'];
         
@@ -800,7 +596,7 @@ map.on("load", () => {
             }
         });
 
-        // Query all visible layers at once
+        // query all visible layers
         const allVisibleLayers = [...additionalVisibleLayers, ...visibleLayers.map(layer => layer.id)];
         const features = map.queryRenderedFeatures(e.point, {
             layers: allVisibleLayers
@@ -814,7 +610,6 @@ map.on("load", () => {
             const feature = features[0];
             const layerId = feature.layer.id;
             
-            // Check if this is an additional layer first (priority)
             if (additionalLayerIds.includes(layerId)) {
                 newHoveredLayer = 'additional';
                 newHoveredFeature = `${layerId}-${feature.id || 0}`;
@@ -846,6 +641,7 @@ map.on("load", () => {
                         popupContent = `
                             <div class="popup-content">
                                 <h4>NYCHA Housing</h4>
+                                <p><strong>Development Name:</strong> ${properties.development|| 'N/A'}</p>
                                 <p><strong>Address:</strong> ${properties.Address || 'N/A'}</p>
                                 <p><strong>Owner:</strong> ${properties.OwnerName || 'N/A'}</p>
                             </div>
@@ -853,7 +649,7 @@ map.on("load", () => {
                         break;
                 }
             } 
-            // Check for main data layers
+            // check for data layers
             else if (visibleLayers.length > 0) {
                 newHoveredLayer = 'main';
                 newHoveredFeature = feature.properties.sectors;
@@ -910,7 +706,7 @@ map.on("load", () => {
                             <p class="year-specific-info">Percentage point difference from 2014-2018: ${pctDiff_value}</p>
                         `;
                     } else if (activeYear == '2018' && (activeLayer.property === 'mean_income' || activeLayer.property === 'totalpop')) {
-                        popupContent += `<p class="year-specific-info">Change from 2009-2013: ${pctChange_value}</p>`;
+                        popupContent += `<p class="year-specific-info">Percent change from 2009-2013: ${pctChange_value}</p>`;
                     } else if (activeYear == '2018') {
                         popupContent += `
                             <p class="year-specific-info">Percent change from 2009-2013: ${pctChange_value}</p>
