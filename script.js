@@ -41,8 +41,9 @@ const dataLayers = [
     },
     {id: 'hh_gt65_pct', name: 'Households with at least one member over 65', property: 'hh_gt65_pct'},
     {id: 'hh_lt18_pct', name: 'Households with at least one member under 18', property: 'hh_lt18_pct'},
-    {id: 'number_of_persons_injured', name: 'Monthly average injured in motor vehicle collisons YTD', property: 'number_of_persons_injured'},
-    {id: 'number_of_persons_killed', name: 'Monthly average killed in motor vehicle collisons YTD', property: 'number_of_persons_killed'}
+    {id: 'collision_count', name: 'Motor vehicle collisions (monthly average 2023-present)', property: 'collision_count'},
+    {id: 'number_of_persons_injured', name: 'Nunber injured in motor vehicle collisons (monthly average 2023-present)', property: 'number_of_persons_injured'},
+    {id: 'number_of_persons_killed', name: 'Nunber killed in motor vehicle collisons (monthly average 2023-present)', property: 'number_of_persons_killed'}
 ];
 
 function getColorScale(dataLayer) {
@@ -64,6 +65,7 @@ function getColorScale(dataLayer) {
         'total_bachelorsgradproff_pct': ['#ffffb2', '#fecc5c', '#fd8d3c', '#f03b20'],
         'hh_gt65_pct': ['#ffffb2', '#fecc5c', '#fd8d3c', '#f03b20'],
         'hh_lt18_pct': ['#ffffb2', '#fecc5c', '#fd8d3c', '#f03b20'],
+        'collision_count': ['#ffffb2', '#fecc5c', '#fd8d3c', '#f03b20'],
         'number_of_persons_injured': ['#ffffb2', '#fecc5c', '#fd8d3c', '#f03b20'],
         'number_of_persons_killed': ['#ffffb2', '#fecc5c', '#fd8d3c', '#f03b20']
     };
@@ -91,8 +93,9 @@ function getValueSteps(dataLayer) {
         'total_bachelorsgradproff_pct': [0, 0.2, 0.4, 0.5, 0.7],
         'hh_gt65_pct': [0, 0.24, 0.36, 0.41, 0.5],
         'hh_lt18_pct': [0, 0.07, 0.15, 0.2, 0.5],
-        'number_of_persons_injured': [0, 2, 4, 6, 9],
-        'number_of_persons_killed': [0, 0.1, 0.2, 0.3, 1]
+        'collision_count': [6, 8, 9, 10, 12],
+        'number_of_persons_injured': [0, 4, 5, 6, 9],
+        'number_of_persons_killed': [0, 0.025, 0.05, 0.1, 0.2]
     };
     
     return valueSteps[dataLayer] || valueSteps["nh_white_pct"];
@@ -162,7 +165,8 @@ function addTextLayer(id, name, property) {
                         }
                     ],
                 ],
-                ['in', property, ['literal', ['number_of_persons_injured', 'number_of_persons_killed']]],
+                ['in', property, ['literal', ['collision_count',
+                    'number_of_persons_injured', 'number_of_persons_killed']]],
                 ['concat',
                     ['number-format', 
                         ['to-number', ['get', property]],
@@ -477,7 +481,7 @@ function updateLegend() {
             colorBox.style.backgroundColor = colorScale[i];
             
             const label = document.createElement('span');
-            if (layer.id=='totalpop'|layer.id=='mean_income'|layer.id=='number_of_persons_injured'|layer.id=='number_of_persons_killed') {
+            if (layer.id=='totalpop'|layer.id=='mean_income'|layer.id=='collision_count'|layer.id=='number_of_persons_injured'|layer.id=='number_of_persons_killed') {
                 label.textContent = `${steps[i].toLocaleString()} - ${steps[i+1].toLocaleString()}`;
             } else {
                 label.textContent = `${(steps[i]*100).toLocaleString()}% - ${(steps[i+1]*100).toLocaleString()}%`;
@@ -498,7 +502,7 @@ function updateLegend() {
         
         const lastLabel = document.createElement('span');
         console.log(layer.id)
-        if (layer.id=='totalpop'|layer.id=='mean_income'|layer.id=='number_of_persons_injured'|layer.id=='number_of_persons_killed') {
+        if (layer.id=='totalpop'|layer.id=='mean_income'|layer.id=='collision_count'|layer.id=='number_of_persons_injured'|layer.id=='number_of_persons_killed') {
             lastLabel.textContent = `${steps[steps.length - 2].toLocaleString()}+`;
         } else {
             lastLabel.textContent = `${(steps[steps.length - 2]*100).toLocaleString()}%+`;
@@ -658,7 +662,7 @@ map.on("load", () => {
                     const activeLayer = visibleLayers[0];
                     const properties = feature.properties;
                     
-                    // Format value based on property type
+                    // format value based on property
                     let value;
                     let pctDiff_col;
                     let pctDiff_value;
@@ -667,7 +671,7 @@ map.on("load", () => {
                     let number_col;
                     let number_value;
                     
-                    if (activeLayer.property === 'number_of_persons_injured' || activeLayer.property === 'number_of_persons_killed') {
+                    if (activeLayer.property === 'collision_count' || activeLayer.property === 'number_of_persons_injured' || activeLayer.property === 'number_of_persons_killed') {
                         number_col = activeLayer.property;
                         number_value = properties[number_col].toLocaleString();
                         value = number_value;
@@ -683,6 +687,7 @@ map.on("load", () => {
                         pctDiff_col = activeLayer.property + '_diff'; 
                         pctDiff_value = (Number(properties[pctDiff_col]) * 100).toFixed(1) + '%';
                         pctChange_col = activeLayer.property + '_change';
+                        console.log(pctChange_col)
                         pctChange_value = (Number(properties[pctChange_col]) * 100).toFixed(1) + '%';
                         number_col = activeLayer.property.replace('_pct', '');
                         number_value = properties[number_col].toLocaleString();
@@ -695,9 +700,9 @@ map.on("load", () => {
                             <p><strong>${activeLayer.name}:</strong> ${value}</p>
                     `;
 
-                    // Add conditional content
-                    if (activeLayer.property === 'number_of_persons_injured' || activeLayer.property === 'number_of_persons_killed') {
-                        // No additional info for these
+                    // add conditional content
+                    if (activeLayer.property === 'collision_count' || activeLayer.property === 'number_of_persons_injured' || activeLayer.property === 'number_of_persons_killed') {
+                        // no additional info for these
                     } else if (activeYear == '2023' && (activeLayer.property === 'mean_income' || activeLayer.property === 'totalpop')) {
                         popupContent += `<p class="year-specific-info">Percent change from 2014-2018: ${pctChange_value}</p>`;
                     } else if (activeYear == '2023') {
@@ -719,12 +724,12 @@ map.on("load", () => {
             }
         }
 
-        // Only update if something actually changed
+        // only update if something actually changed
         const featureChanged = newHoveredFeature !== currentHoveredFeature;
         const layerChanged = newHoveredLayer !== currentHoveredLayer;
         
         if (featureChanged || layerChanged) {
-            // Reset previous hover state only if it was a main layer feature
+            // reset
             if (currentHoveredLayer === 'main' && hoveredFeatureId !== null) {
                 map.setFeatureState(
                     { source: 'cb3-data', id: hoveredFeatureId },
@@ -733,7 +738,7 @@ map.on("load", () => {
                 hoveredFeatureId = null;
             }
 
-            // Set new hover state
+            // set new hover state
             if (newHoveredLayer === 'main' && newHoveredFeature !== null) {
                 hoveredFeatureId = newHoveredFeature;
                 map.setFeatureState(
@@ -742,7 +747,7 @@ map.on("load", () => {
                 );
             }
 
-            // Update popup
+            // update popup
             if (newHoveredFeature !== null && popupContent !== '') {
                 popup.setLngLat(e.lngLat).setHTML(popupContent);
                 if (!popup._map) {
@@ -752,16 +757,15 @@ map.on("load", () => {
                 popup.remove();
             }
 
-            // Update tracking variables
+            // update tracking
             currentHoveredFeature = newHoveredFeature;
             currentHoveredLayer = newHoveredLayer;
         } else if (newHoveredFeature !== null) {
-            // Same feature, just update popup position
+            // update popup position
             popup.setLngLat(e.lngLat);
         }
     });
 
-    // Add mouseleave handler for cleaner exit behavior
     map.on('mouseleave', () => {
         if (currentHoveredLayer === 'main' && hoveredFeatureId !== null) {
             map.setFeatureState(
@@ -776,7 +780,7 @@ map.on("load", () => {
         currentHoveredLayer = null;
     });
 
-    // Add navigation controls to the map
+    // add navigation controls
     map.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
     document.getElementById('toggle-2013').addEventListener('click', function() {
