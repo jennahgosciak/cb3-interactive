@@ -231,7 +231,7 @@ function addNYCHALayer() {
         'paint': {
             'fill-color': '#8C2232', 
             'fill-opacity': 0.8,
-            'fill-outline-color': '#006400'
+            'fill-outline-color': '#8C2232'
         },
     });
 }
@@ -245,9 +245,9 @@ function addSec8Layer() {
             'visibility': 'none'
         },
         'paint': {
-            'fill-color': '#807BA1', 
+            'fill-color': '#39BA90', 
             'fill-opacity': 0.8,
-            'fill-outline-color': '#006400'
+            'fill-outline-color': '#39BA90'
         },
     });
 }
@@ -261,9 +261,9 @@ function addMLLayer() {
             'visibility': 'none'
         },
         'paint': {
-            'fill-color': '#807BA1', 
+            'fill-color': '#D64692', 
             'fill-opacity': 0.8,
-            'fill-outline-color': '#006400'
+            'fill-outline-color': '#D64692'
         },
     });
 }
@@ -279,7 +279,7 @@ function addParksLayer() {
         'paint': {
             'fill-color': '#8CC75F', 
             'fill-opacity': 0.8,
-            'fill-outline-color': '#006400'
+            'fill-outline-color': '#8CC75F'
         },
     });
 }
@@ -625,6 +625,7 @@ map.on("load", () => {
                         popupContent = `
                             <div class="popup-content">
                                 <h4>Mitchell-Lama Housing</h4>
+                                <p><strong>Building Name:</strong> ${properties.name|| 'N/A'}</p>
                                 <p><strong>Address:</strong> ${properties.Address || 'N/A'}</p>
                                 <p><strong>Owner:</strong> ${properties.OwnerName || 'N/A'}</p>
                             </div>
