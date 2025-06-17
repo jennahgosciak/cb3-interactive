@@ -937,7 +937,7 @@ function updateLegend() {
         legend.appendChild(layerSection);
     });
 
-    createCrashLegend();
+    //createCrashLegend();
 }
 
 // wait for map to load before adjusting it
