@@ -2,6 +2,343 @@ console.log("Initialize")
 // define access token for mapboxgl
 mapboxgl.accessToken = "pk.eyJ1Ijoiamdvc2NpYWsiLCJhIjoiY2t3cG5vanB5MGVwMjJuczJrMXI4MzlsdSJ9.TS0iy75tU2Dam19zeMjv7Q"
 
+let currentYear = 2024;
+let currentMonth = 12;
+let allCrashData = null; // Will store all crash data
+let filteredCrashData = null; // Will store filtered crash data for current date
+
+// Generate array of year/month combinations for the slider
+function generateDateRange() {
+    const dates = [];
+    const startYear = 2023;
+    const startMonth = 1;
+    const endYear = 2025;
+    const endMonth = 5;
+    
+    for (let year = startYear; year <= endYear; year++) {
+        const monthStart = (year === startYear) ? startMonth : 1;
+        const monthEnd = (year === endYear) ? endMonth : 12;
+        
+        for (let month = monthStart; month <= monthEnd; month++) {
+            dates.push({ year, month });
+        }
+    }
+    
+    return dates;
+}
+
+// Function to format date for display
+function formatDateDisplay(year, month) {
+    const monthNames = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    return `${monthNames[month - 1]} ${year}`;
+}
+
+// Function to create the year/month slider
+function createCrashDateSlider() {
+    console.log("creating crash date slider")
+    const controlsContainer = document.getElementById('layer-toggles');
+    
+    // Create slider container
+    const sliderContainer = document.createElement('div');
+    sliderContainer.className = 'slider-container';
+    sliderContainer.style.marginTop = '20px';
+    sliderContainer.style.padding = '10px';
+    sliderContainer.style.backgroundColor = 'rgba(0,0,0,0.1)';
+    
+    // Title
+    const sliderTitle = document.createElement('h4');
+    sliderTitle.textContent = 'Motor Vehicle Crashes';
+    sliderTitle.style.color = 'white';
+    sliderTitle.style.margin = '0 0 10px 0';
+    sliderContainer.appendChild(sliderTitle);
+    
+    // Generate date range
+    const dateRange = generateDateRange();
+    
+    // Slider
+    const slider = document.createElement('input');
+    // slider.type = 'range';
+    // slider.id = 'date-slider';
+    // slider.style.background = 'white';
+    // slider.min = '0';
+    // slider.max = (dateRange.length - 1).toString();
+    // slider.value = (dateRange.length - 1).toString(); // Default to latest date
+    // slider.step = '1';
+    // slider.style.width = '100%';
+    // slider.style.marginBottom = '10px';
+
+    slider.type = 'range';
+    slider.id = 'date-slider';
+    slider.min = '0';
+    slider.max = (dateRange.length - 1).toString();
+    slider.value = (dateRange.length - 1).toString(); // Default to latest date
+    slider.step = '1';
+    slider.style.width = '100%';
+    slider.style.marginBottom = '10px';
+
+    // Simple white styling with no gradients or shading
+    slider.style.background = 'gray';
+    slider.style.webkitAppearance = 'none';
+    slider.style.appearance = 'none';
+    slider.style.height = '6px';
+    slider.style.borderRadius = '3px';
+    slider.style.outline = 'none';
+
+    // Style the thumb (handle)
+    slider.style.setProperty('--thumb-color', 'white');
+    const thumbStyle = `
+        #${slider.id}::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: white;
+            border: 2px solid #999;
+            cursor: pointer;
+        }
+        #${slider.id}::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: white;
+            border: 2px solid #999;
+            cursor: pointer;
+            -moz-appearance: none;
+        }
+    `;
+
+    // Add the thumb styling
+    const style = document.createElement('style');
+    style.textContent = thumbStyle;
+    document.head.appendChild(style);
+    
+    // Value display
+    const valueDisplay = document.createElement('div');
+    valueDisplay.id = 'date-slider-value';
+    valueDisplay.style.color = 'white';
+    valueDisplay.style.fontSize = '12px';
+    valueDisplay.style.textAlign = 'center';
+    valueDisplay.style.fontWeight = 'bold';
+    
+    // Crash count display
+    const crashCountDisplay = document.createElement('div');
+    crashCountDisplay.id = 'crash-count-display';
+    crashCountDisplay.style.color='white';
+    // crashCountDisplay.style.color = '#000';
+    // crashCountDisplay.style.fontSize = '11px';
+    // crashCountDisplay.style.textAlign = 'center';
+    // crashCountDisplay.style.marginTop = '5px';
+    
+    // Initialize display
+    const initialDate = dateRange[dateRange.length - 1];
+    currentYear = initialDate.year;
+    currentMonth = initialDate.month;
+    valueDisplay.textContent = formatDateDisplay(currentYear, currentMonth);
+    
+    // Date range labels
+    const rangeLabels = document.createElement('div');
+    rangeLabels.style.display = 'flex';
+    rangeLabels.style.justifyContent = 'space-between';
+    rangeLabels.style.fontSize = '10px';
+    rangeLabels.style.color = '#ccc';
+    rangeLabels.style.marginTop = '5px';
+    
+    const startLabel = document.createElement('span');
+    startLabel.textContent = formatDateDisplay(dateRange[0].year, dateRange[0].month);
+    
+    const endLabel = document.createElement('span');
+    endLabel.textContent = formatDateDisplay(dateRange[dateRange.length - 1].year, dateRange[dateRange.length - 1].month);
+    
+    rangeLabels.appendChild(startLabel);
+    rangeLabels.appendChild(endLabel);
+    
+    // Slider event listener
+    slider.addEventListener('input', function() {
+        const dateIndex = parseInt(this.value);
+        const selectedDate = dateRange[dateIndex];
+        currentYear = selectedDate.year;
+        currentMonth = selectedDate.month;
+        
+        valueDisplay.textContent = formatDateDisplay(currentYear, currentMonth);
+        
+        // Filter and update crash data for new date
+        filterCrashDataForDate(currentYear, currentMonth);
+    });
+    
+    sliderContainer.appendChild(slider);
+    sliderContainer.appendChild(valueDisplay);
+    sliderContainer.appendChild(crashCountDisplay);
+    sliderContainer.appendChild(rangeLabels);
+    controlsContainer.appendChild(sliderContainer);
+}
+
+// Function to filter crash data by date
+function filterCrashDataForDate(year, month) {
+    if (!allCrashData) return;
+    
+    const filteredFeatures = allCrashData.features.filter(feature => {
+        const props = feature.properties;
+        return props.crash_year === year && props.crash_month === month;
+    });
+    
+    filteredCrashData = {
+        type: 'FeatureCollection',
+        features: filteredFeatures
+    };
+    
+    // Update map source
+    if (map.getSource('intersection-crashes')) {
+        map.getSource('intersection-crashes').setData(filteredCrashData);
+    }
+}
+
+async function addIntersectionCrashLayer() {
+    try {
+        // Load crash data from GeoJSON file
+        allCrashData = await loadCrashDataFromFile();
+        
+        // Initialize with current date filter
+        filterCrashDataForDate(currentYear, currentMonth);
+        
+        map.addSource('intersection-crashes', {
+            type: 'geojson',
+            data: filteredCrashData || {
+                type: 'FeatureCollection',
+                features: []
+            }
+        });
+    } catch (error) {
+        console.error('Error loading crash data:', error);
+        // Fallback to empty dataset
+        map.addSource('intersection-crashes', {
+            type: 'geojson',
+            data: {
+                type: 'FeatureCollection',
+                features: []
+            }
+        });
+    }
+
+    // Add points for individual crashes
+    // map.addLayer({
+    //     'id': 'crash-points',
+    //     'type': 'circle',
+    //     'source': 'intersection-crashes',
+    //     'layout': {
+    //         'visibility': 'none'
+    //     },
+    //     'paint': {
+    //         'circle-radius': [
+    //             'case',
+    //             ['==', ['get', 'severity'], 'number_of_persons_killed'], 8,
+    //             ['==', ['get', 'severity'], 'number_of_persons_injured'], 5,
+    //         ],
+    //         'circle-color': [
+    //             'case',
+    //             ['==', ['get', 'severity'], 'number_of_persons_killed'], '#800026',
+    //             ['==', ['get', 'severity'], 'number_of_persons_injured'], '#f03b20',
+    //         ],
+    //         'circle-opacity': 0.8,
+    //         'circle-stroke-color': '#000',
+    //         'circle-stroke-width': 1
+    //     }
+    // });
+
+    // Add clustered view for better performance with many points
+    map.addLayer({
+        'id': 'crash-clusters',
+        'type': 'circle',
+        'source': 'intersection-crashes',
+        'layout': {
+            'visibility': 'none'
+        },
+        'paint': {
+            'circle-radius': [
+                'step',
+                ['get', 'collision_count'],
+                6,  // Default size
+                1, 5,   // 1+ crashes
+                2, 8,  // 2+ crashes
+                3, 10,   // 3+ crashes
+                4, 15,   // 4+ crashes
+                5, 20,   // 5+ crashes
+            ],
+            'circle-color': [
+                'step',
+                ['get', 'collision_count'],
+                '#fecc5c',
+                1, '#fd8d3c',
+                3, '#f03b20',
+                5, '#bd0026'
+            ],
+            'circle-opacity': 0.5
+        },
+        'filter': ['has', 'collision_count']
+    });
+
+    // Add cluster count labels
+    map.addLayer({
+        'id': 'crash-cluster-count',
+        'type': 'symbol',
+        'source': 'intersection-crashes',
+        'layout': {
+            'visibility': 'none',
+            'text-field': '{collision_count}',
+            'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+            'text-size': 9,
+            'text-anchor': 'center'
+        },
+        'paint': {
+            'text-color': '#000',
+        },
+        'filter': ['has', 'collision_count']
+    });
+}
+
+// Function to load crash data from GeoJSON file
+async function loadCrashDataFromFile() {
+    try {
+        console.log("loading crash data")
+        const response = await fetch('data/motor_vehicle_collisions.geojson');
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        // Validate that it's proper GeoJSON
+        if (!data.type || data.type !== 'FeatureCollection' || !data.features) {
+            throw new Error('Invalid GeoJSON format');
+        }
+        
+        // Validate that features have required properties
+        const requiredProperties = ['crash_year', 'crash_month'];
+        const validFeatures = data.features.filter(feature => {
+            const props = feature.properties;
+            return requiredProperties.every(prop => props && props[prop] !== undefined && props[prop] !== null);
+        });
+        
+        if (validFeatures.length === 0) {
+            console.warn('No valid crash features found in data');
+        }
+        
+        console.log(`Loaded ${validFeatures.length} crash records from GeoJSON file`);
+        
+        return {
+            type: 'FeatureCollection',
+            features: validFeatures
+        };
+        
+    } catch (error) {
+        console.error('Failed to load crash data:', error);
+        throw error;
+    }
+}
+
 // init/create popup
 const popup = new mapboxgl.Popup({
     closeButton: false,
@@ -409,7 +746,8 @@ function setupLayerToggles() {
         { id: 'parks', label: 'Parks', layers: ['parks-data'] },
         { id: 'nycha', label: 'NYCHA Housing', layers: ['nycha-data'] },
         { id: 'sec8', label: 'Section 8 Housing', layers: ['sec8-data'] },
-        { id: 'ml', label: 'Mitchell-Lama Housing', layers: ['ml-data'] }
+        { id: 'ml', label: 'Mitchell-Lama Housing', layers: ['ml-data'] },
+        { id: 'crashes', label: 'Motor Vehicle Crashes', layers: ['crash-clusters', 'crash-cluster-count'] }
     ];
 
     additionalLayers.forEach(layerInfo => {
@@ -439,6 +777,90 @@ function setupLayerToggles() {
         toggleContainer.appendChild(label);
         document.getElementById('layer-toggles').appendChild(toggleContainer);
     });
+
+    // Add the crash date slider
+    createCrashDateSlider();
+}
+
+function handleCrashHover(features, e) {
+    console.log('adding hover feature')
+    const crashFeature = features.find(f => 
+        f.layer.id === 'crash-clusters'
+    );
+    
+    console.log(features)
+    if (crashFeature) {
+        const properties = crashFeature.properties;
+        
+        if (properties.collision_count) {
+            // This is a cluster
+            return `
+                <div class="popup-content">
+                    <h4>Motor Vehicle Crashes</h4>
+                    <p><strong>Number of crashes:</strong> ${properties.collision_count}</p> 
+                    <p><strong>Injured:</strong> ${properties.number_of_persons_injured}</p> 
+                    <p><strong>Fatalities:</strong> ${properties.number_of_persons_killed}</p>
+                </div>
+            `;
+        } else {
+            // Individual crash
+            return `
+                <div class="popup-content">
+                    <h4>Motor Vehicle Crash</h4>
+                    ${properties.number_of_persons_injured > 0 > 0 ? `<p><strong>Injured:</strong> ${properties.number_of_persons_injured}</p>` : ''}
+                    ${properties.number_of_persons_killed > 0 ? `<p><strong>Fatalities:</strong> ${properties.number_of_persons_killed}</p>` : ''}
+                </div>
+            `;
+        }
+    }
+    
+    return null;
+}
+
+// Add legend for crash data
+function createCrashLegend() {
+    console.log("Crash legend")
+    const legend = document.getElementById('legend');
+    
+    // Check if crash layer is visible
+    const crashVisible = map.getLayoutProperty('crash-clusters', 'visibility') === 'visible';
+    
+    if (crashVisible) {
+        const crashSection = document.createElement('div');
+        crashSection.className = 'legend-section';
+        crashSection.id = 'crash-legend';
+        
+        const title = document.createElement('h4');
+        title.textContent = `Intersection Crashes - ${formatDateDisplay(currentYear, currentMonth)}`;
+        crashSection.appendChild(title);
+        
+        const legendItems = [
+            { color: '#f03b20', label: 'Injuries', size: '10px' },
+            { color: '#800026', label: 'Fatalities', size: '16px' }
+        ];
+        
+        legendItems.forEach(item => {
+            const legendItem = document.createElement('div');
+            legendItem.className = 'legend-item';
+            
+            const colorBox = document.createElement('span');
+            colorBox.className = 'color-box';
+            colorBox.style.backgroundColor = item.color;
+            colorBox.style.borderRadius = '50%';
+            colorBox.style.width = item.size;
+            colorBox.style.height = item.size;
+            colorBox.style.border = '1px solid #000';
+            
+            const label = document.createElement('span');
+            label.textContent = item.label;
+            
+            legendItem.appendChild(colorBox);
+            legendItem.appendChild(label);
+            crashSection.appendChild(legendItem);
+        });
+        
+        legend.appendChild(crashSection);
+    }
 }
 
 // update legend based on visible layers
@@ -451,7 +873,7 @@ function updateLegend() {
     const visibleLayers = dataLayers
         .filter(layer => map.getLayoutProperty(layer.id, 'visibility') === 'visible');
     
-    if (visibleLayers.length === 0) {
+    if (visibleLayers.length === 0 && !crashVisible) {
         const noLayersMsg = document.createElement('p');
         noLayersMsg.textContent = 'No layers selected';
         legend.appendChild(noLayersMsg);
@@ -514,6 +936,8 @@ function updateLegend() {
         
         legend.appendChild(layerSection);
     });
+
+    createCrashLegend();
 }
 
 // wait for map to load before adjusting it
@@ -578,6 +1002,8 @@ map.on("load", () => {
     addNYCHALayer();
     addSec8Layer();
     addMLLayer();
+    console.log("adding crash data")
+    addIntersectionCrashLayer();
     dataLayers.forEach(layer => {
         addTextLayer(layer.id, layer.name, layer.property);
     });
@@ -592,9 +1018,10 @@ map.on("load", () => {
 
         // check for visibility of additional layers
         const additionalVisibleLayers = [];
-        const additionalLayerIds = ['ml-data', 'sec8-data', 'nycha-data', 'parks-data', 'ej-area'];
+        const additionalLayerIds = ['ml-data', 'sec8-data', 'nycha-data', 'parks-data', 'ej-area', 'crash-clusters'];
         
         additionalLayerIds.forEach(layerId => {
+            console.log(layerId)
             if (map.getLayoutProperty(layerId, 'visibility') === 'visible') {
                 additionalVisibleLayers.push(layerId);
             }
@@ -636,6 +1063,7 @@ map.on("load", () => {
                         popupContent = `
                             <div class="popup-content">
                                 <h4>Section 8 Housing</h4>
+                                <p><strong>Development Name:</strong> ${properties.name || 'N/A'}</p>
                                 <p><strong>Address:</strong> ${properties.Address || 'N/A'}</p>
                                 <p><strong>Owner:</strong> ${properties.OwnerName || 'N/A'}</p>
                             </div>
@@ -651,6 +1079,9 @@ map.on("load", () => {
                                 <p><strong>Owner:</strong> ${properties.OwnerName || 'N/A'}</p>
                             </div>
                         `;
+                        break;
+                    case 'crash-clusters':
+                        popupContent = handleCrashHover([feature], e);
                         break;
                 }
             } 
