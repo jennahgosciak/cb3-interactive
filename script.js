@@ -6,69 +6,276 @@ let currentYear = 2024;
 let currentMonth = 12;
 let allCrashData = null; // Will store all crash data
 let filteredCrashData = null; // Will store filtered crash data for current date
+let crashLevel = 'monthly';
 
 // Generate array of year/month combinations for the slider
-function generateDateRange() {
+function generateDateRange(timeScale = 'monthly') {
+    console.log(timeScale);
     const dates = [];
     const startYear = 2023;
     const startMonth = 1;
     const endYear = 2025;
     const endMonth = 5;
     
-    for (let year = startYear; year <= endYear; year++) {
-        const monthStart = (year === startYear) ? startMonth : 1;
-        const monthEnd = (year === endYear) ? endMonth : 12;
-        
-        for (let month = monthStart; month <= monthEnd; month++) {
-            dates.push({ year, month });
+    if (timeScale === 'yearly') {
+        // for yearly
+        for (let year = startYear; year <= endYear; year++) {
+            dates.push({ year, month: null }); // month is null for yearly view
+        }
+    } else {
+        // for monthly
+        for (let year = startYear; year <= endYear; year++) {
+            const monthStart = (year === startYear) ? startMonth : 1;
+            const monthEnd = (year === endYear) ? endMonth : 12;
+            
+            for (let month = monthStart; month <= monthEnd; month++) {
+                dates.push({ year, month });
+            }
         }
     }
-    
     return dates;
 }
 
-// Function to format date for display
 function formatDateDisplay(year, month) {
-    const monthNames = [
-        'January', 'February', 'March', 'April', 'May', 'June',
-        'July', 'August', 'September', 'October', 'November', 'December'
-    ];
-    return `${monthNames[month - 1]} ${year}`;
+    console.log(year);
+    console.log(month);
+    if (month === null) {
+        // Yearly display
+        return `${year}`;
+    } else {
+        // Monthly display
+        const monthNames = [
+            'January', 'February', 'March', 'April', 'May', 'June',
+            'July', 'August', 'September', 'October', 'November', 'December'
+        ];
+        return `${monthNames[month - 1]} ${year}`;
+    }
 }
 
-// Function to create the year/month slider
+// Function to create time scale dropdown
+function createTimeScaleSelector() {
+    const container = document.createElement('select');
+    container.id = 'time-scale-dropdown';
+    container.className = 'time-scale-dropdown';
+
+    // additional css styles
+    container.style.width = '40%';             // Make dropdown full width of container
+    container.style.maxWidth = '250px';         // Set maximum width
+    container.style.overflow = 'hidden';        // Hide overflow
+    container.style.textOverflow = 'ellipsis';  // Add ellipsis for text that's too long
+    container.style.fontSize = '12px';          // Reduce font size from default
+    container.style.color = 'white';          // Reduce font size from default
+
+
+    const timeScales = [
+        { value: 'monthly', label: 'Monthly' },
+        { value: 'yearly', label: 'Yearly' },
+        { value: 'all', label: 'All Time' }
+    ];
+    
+    timeScales.forEach(scale => {
+        const option = document.createElement('option');
+        option.value = scale.value;
+        option.textContent = scale.label;
+        container.appendChild(option);
+    });
+
+    container.addEventListener('change', (e) => {
+        crashLevel = e.target.value;
+        updateCrashDataForTimeScale();
+        updateSliderVisibility();
+    });
+    
+    return container;
+}
+
+// Function to update slider range and labels based on time scale
+function updateSliderRange(timeScale) {
+    const slider = document.getElementById('date-slider');
+    const valueDisplay = document.getElementById('date-slider-value');
+    const rangeLabels = document.querySelector('.date-slider-wrapper > div:last-child');
+    
+    if (!slider || !valueDisplay) return;
+    
+    const dateRange = generateDateRange(timeScale);
+    
+    // Update slider properties
+    slider.max = (dateRange.length - 1).toString();
+    slider.value = (dateRange.length - 1).toString(); // Default to latest date
+    
+    // Update current year/month based on latest date
+    const latestDate = dateRange[dateRange.length - 1];
+    currentYear = latestDate.year;
+    currentMonth = latestDate.month;
+    
+    // Update display
+    valueDisplay.textContent = formatDateDisplay(currentYear, currentMonth);
+    
+    // Update range labels
+    if (rangeLabels) {
+        const startLabel = rangeLabels.firstChild;
+        const endLabel = rangeLabels.lastChild;
+        
+        if (startLabel) startLabel.textContent = formatDateDisplay(dateRange[0].year, dateRange[0].month);
+        if (endLabel) endLabel.textContent = formatDateDisplay(dateRange[dateRange.length - 1].year, dateRange[dateRange.length - 1].month);
+    }
+    
+    // Store current date range for slider event handler
+    slider.dateRange = dateRange;
+}
+
+function updateSliderVisibility() {
+    console.log(crashLevel)
+    const sliderContainer = document.querySelector('.date-slider-wrapper');
+    const valueDisplay = document.getElementById('date-slider-value');
+    
+    if (crashLevel === 'monthly') {
+        if (sliderContainer) sliderContainer.style.display = 'block';
+        if (valueDisplay) valueDisplay.style.display = 'block';
+        updateSliderRange('monthly');
+    } else if (crashLevel === 'yearly') {
+        if (sliderContainer) sliderContainer.style.display = 'block';
+        if (valueDisplay) valueDisplay.style.display = 'block';
+        updateSliderRange('yearly');
+    } else {
+        if (sliderContainer) sliderContainer.style.display = 'none';
+        if (valueDisplay) valueDisplay.style.display = 'none';
+    }
+}
+
+function updateCrashDataForTimeScale() {
+    if (!allCrashData) return;
+    
+    let filteredFeatures;
+    
+    switch (crashLevel) {
+        case 'monthly':
+            filteredFeatures = allCrashData.features.filter(feature => {
+                const props = feature.properties;
+                return props.crash_year === currentYear && props.crash_month === currentMonth;
+            });
+            break;
+            
+        case 'yearly':
+            // filteredFeatures = allCrashData.features.filter(feature => {
+            //     const props = feature.properties;
+            //     return props.crash_year === currentYear;
+            // });
+            // break;
+
+            const yearlyFeatures = allCrashData.features.filter(feature => {
+                const props = feature.properties;
+                return props.crash_year === currentYear;
+            });
+            
+            // Group by location and sum collision counts
+            const locationGroups = {};
+            yearlyFeatures.forEach(feature => {
+                const coords = feature.geometry.coordinates.join(','); // Use coordinates as key
+                
+                if (!locationGroups[coords]) {
+                    locationGroups[coords] = {
+                        ...feature,
+                        properties: {
+                            ...feature.properties,
+                            collision_count: feature.properties.collision_count || 0,
+                            number_of_persons_injured: feature.properties.number_of_persons_injured || 0,
+                            number_of_persons_killed: feature.properties.number_of_persons_killed || 0
+                        }
+                    };
+                } else {
+                    // Sum the values
+                    locationGroups[coords].properties.collision_count += feature.properties.collision_count || 0;
+                    locationGroups[coords].properties.number_of_persons_injured += feature.properties.number_of_persons_injured || 0;
+                    locationGroups[coords].properties.number_of_persons_killed += feature.properties.number_of_persons_killed || 0;
+                }
+            });
+            
+            filteredFeatures = Object.values(locationGroups);
+            break;
+        case 'all':
+            const allFeatures = allCrashData.features.filter(feature => {
+                const props = feature.properties;
+                return props;
+            });
+            
+            // Group by location and sum collision counts
+            const locationGroupsAll = {};
+            allFeatures.forEach(feature => {
+                const coords = feature.geometry.coordinates.join(','); // Use coordinates as key
+                
+                if (!locationGroupsAll[coords]) {
+                    locationGroupsAll[coords] = {
+                        ...feature,
+                        properties: {
+                            ...feature.properties,
+                            collision_count: feature.properties.collision_count || 0,
+                            number_of_persons_injured: feature.properties.number_of_persons_injured || 0,
+                            number_of_persons_killed: feature.properties.number_of_persons_killed || 0
+                        }
+                    };
+                } else {
+                    // Sum the values
+                    locationGroupsAll[coords].properties.collision_count += feature.properties.collision_count || 0;
+                    locationGroupsAll[coords].properties.number_of_persons_injured += feature.properties.number_of_persons_injured || 0;
+                    locationGroupsAll[coords].properties.number_of_persons_killed += feature.properties.number_of_persons_killed || 0;
+                }
+            });
+            
+            filteredFeatures = Object.values(locationGroupsAll);
+            break;
+    }
+    
+    filteredCrashData = {
+        type: 'FeatureCollection',
+        features: filteredFeatures
+    };
+    
+    // Update map source
+    if (map.getSource('intersection-crashes')) {
+        map.getSource('intersection-crashes').setData(filteredCrashData);
+    }
+}
+
 function createCrashDateSlider() {
     console.log("creating crash date slider")
     const controlsContainer = document.getElementById('layer-toggles');
     
-    // Create slider container
+    // create slider
     const sliderContainer = document.createElement('div');
     sliderContainer.className = 'slider-container';
     sliderContainer.style.marginTop = '20px';
     sliderContainer.style.padding = '10px';
     sliderContainer.style.backgroundColor = 'rgba(0,0,0,0.1)';
+
+    const headerContainer = document.createElement('div');
+    headerContainer.style.display = 'flex';
+    headerContainer.style.justifyContent = 'space-between';
+    headerContainer.style.alignItems = 'flex-start';
+    headerContainer.style.marginBottom = '15px';
     
-    // Title
     const sliderTitle = document.createElement('h4');
     sliderTitle.textContent = 'Motor Vehicle Crashes';
     sliderTitle.style.color = 'white';
-    sliderTitle.style.margin = '0 0 10px 0';
-    sliderContainer.appendChild(sliderTitle);
+    sliderTitle.style.margin = '0';
+    sliderTitle.style.flex = '1';
+    // sliderContainer.appendChild(sliderTitle);
+
+    // init time scale selector (dropdown)
+    console.log('creating dropdown')
+    const timeScaleSelector = createTimeScaleSelector();
+    headerContainer.appendChild(sliderTitle);
+    headerContainer.appendChild(timeScaleSelector);
+    sliderContainer.appendChild(headerContainer);
     
-    // Generate date range
+    // gen date range
     const dateRange = generateDateRange();
+
+    const sliderWrapper = document.createElement('div');
+    sliderWrapper.className = 'date-slider-wrapper';
     
-    // Slider
+    // init slider
     const slider = document.createElement('input');
-    // slider.type = 'range';
-    // slider.id = 'date-slider';
-    // slider.style.background = 'white';
-    // slider.min = '0';
-    // slider.max = (dateRange.length - 1).toString();
-    // slider.value = (dateRange.length - 1).toString(); // Default to latest date
-    // slider.step = '1';
-    // slider.style.width = '100%';
-    // slider.style.marginBottom = '10px';
 
     slider.type = 'range';
     slider.id = 'date-slider';
@@ -124,14 +331,10 @@ function createCrashDateSlider() {
     valueDisplay.style.fontWeight = 'bold';
     
     // Crash count display
-    const crashCountDisplay = document.createElement('div');
-    crashCountDisplay.id = 'crash-count-display';
-    crashCountDisplay.style.color='white';
-    // crashCountDisplay.style.color = '#000';
-    // crashCountDisplay.style.fontSize = '11px';
-    // crashCountDisplay.style.textAlign = 'center';
-    // crashCountDisplay.style.marginTop = '5px';
-    
+    // const crashCountDisplay = document.createElement('div');
+    // crashCountDisplay.id = 'crash-count-display';
+    // crashCountDisplay.style.color='white';
+
     // Initialize display
     const initialDate = dateRange[dateRange.length - 1];
     currentYear = initialDate.year;
@@ -157,58 +360,72 @@ function createCrashDateSlider() {
     
     // Slider event listener
     slider.addEventListener('input', function() {
+
         const dateIndex = parseInt(this.value);
-        const selectedDate = dateRange[dateIndex];
+        const selectedDate = slider.dateRange[dateIndex];
+        console.log(slider.dateRange);
         currentYear = selectedDate.year;
         currentMonth = selectedDate.month;
         
         valueDisplay.textContent = formatDateDisplay(currentYear, currentMonth);
         
-        // Filter and update crash data for new date
-        filterCrashDataForDate(currentYear, currentMonth);
+        // Update crash data based on current time scale
+        updateCrashDataForTimeScale();
+        // updateCrashCountDisplay();
     });
     
-    sliderContainer.appendChild(slider);
-    sliderContainer.appendChild(valueDisplay);
-    sliderContainer.appendChild(crashCountDisplay);
-    sliderContainer.appendChild(rangeLabels);
+    sliderWrapper.appendChild(slider);
+    sliderWrapper.appendChild(valueDisplay);
+    sliderWrapper.appendChild(rangeLabels);
+    
+    sliderContainer.appendChild(sliderWrapper);
+    // sliderContainer.appendChild(crashCountDisplay);
     controlsContainer.appendChild(sliderContainer);
+    
+    // Initialize visibility based on default time scale
+    updateSliderVisibility();
 }
 
 // Function to filter crash data by date
 function filterCrashDataForDate(year, month) {
-    if (!allCrashData) return;
-    
-    const filteredFeatures = allCrashData.features.filter(feature => {
-        const props = feature.properties;
-        return props.crash_year === year && props.crash_month === month;
-    });
-    
-    filteredCrashData = {
-        type: 'FeatureCollection',
-        features: filteredFeatures
-    };
-    
-    // Update map source
-    if (map.getSource('intersection-crashes')) {
-        map.getSource('intersection-crashes').setData(filteredCrashData);
-    }
+    currentYear = year;
+    currentMonth = month;
+    updateCrashDataForTimeScale();
+    // updateCrashCountDisplay();
 }
+
+// function filterCrashDataForDate(year, month) {
+//     if (!allCrashData) return;
+    
+//     const filteredFeatures = allCrashData.features.filter(feature => {
+//         const props = feature.properties;
+//         return props.crash_year === year && props.crash_month === month;
+//     });
+    
+//     filteredCrashData = {
+//         type: 'FeatureCollection',
+//         features: filteredFeatures
+//     };
+    
+//     // Update map source
+//     if (map.getSource('intersection-crashes')) {
+//         map.getSource('intersection-crashes').setData(filteredCrashData);
+//     }
+// }
 
 async function addIntersectionCrashLayer() {
     try {
         // Load crash data from GeoJSON file
         allCrashData = await loadCrashDataFromFile();
         
-        // Initialize with current date filter
-        filterCrashDataForDate(currentYear, currentMonth);
+        updateCrashDataForTimeScale();
         
         map.addSource('intersection-crashes', {
             type: 'geojson',
             data: filteredCrashData || {
                 type: 'FeatureCollection',
                 features: []
-            }
+            },
         });
     } catch (error) {
         console.error('Error loading crash data:', error);
@@ -221,31 +438,6 @@ async function addIntersectionCrashLayer() {
             }
         });
     }
-
-    // Add points for individual crashes
-    // map.addLayer({
-    //     'id': 'crash-points',
-    //     'type': 'circle',
-    //     'source': 'intersection-crashes',
-    //     'layout': {
-    //         'visibility': 'none'
-    //     },
-    //     'paint': {
-    //         'circle-radius': [
-    //             'case',
-    //             ['==', ['get', 'severity'], 'number_of_persons_killed'], 8,
-    //             ['==', ['get', 'severity'], 'number_of_persons_injured'], 5,
-    //         ],
-    //         'circle-color': [
-    //             'case',
-    //             ['==', ['get', 'severity'], 'number_of_persons_killed'], '#800026',
-    //             ['==', ['get', 'severity'], 'number_of_persons_injured'], '#f03b20',
-    //         ],
-    //         'circle-opacity': 0.8,
-    //         'circle-stroke-color': '#000',
-    //         'circle-stroke-width': 1
-    //     }
-    // });
 
     // Add clustered view for better performance with many points
     map.addLayer({
@@ -703,7 +895,6 @@ function setupLayerToggles() {
     const defaultOption = document.createElement('option');
     defaultOption.value = 'none';
     defaultOption.textContent = 'No layer selected';
-    //defaultOption.disabled = true;
     defaultOption.selected = true;
     layerSelect.appendChild(defaultOption);
 
