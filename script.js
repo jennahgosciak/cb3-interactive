@@ -701,9 +701,9 @@ function setupLayerToggles() {
 
 
     const defaultOption = document.createElement('option');
-    defaultOption.value = '';
-    defaultOption.textContent = 'Select a layer';
-    defaultOption.disabled = true;
+    defaultOption.value = 'none';
+    defaultOption.textContent = 'No layer selected';
+    //defaultOption.disabled = true;
     defaultOption.selected = true;
     layerSelect.appendChild(defaultOption);
 
@@ -725,7 +725,7 @@ function setupLayerToggles() {
         
         // show only the selected layer
         const selectedLayerId = e.target.value;
-        if (selectedLayerId) {
+        if (selectedLayerId && selectedLayerId !== 'none') {
             map.setLayoutProperty(selectedLayerId, 'visibility', 'visible');
             map.setLayoutProperty(`${selectedLayerId}-hover`, 'visibility', 'visible');
             map.setLayoutProperty(`${selectedLayerId}-text`, 'visibility', 'visible');
