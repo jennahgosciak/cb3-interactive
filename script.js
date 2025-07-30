@@ -148,81 +148,27 @@ function updateCrashDataForTimeScale() {
     
     let filteredFeatures;
     
+    console.log(allCrashData.features);
     switch (crashLevel) {
         case 'monthly':
             filteredFeatures = allCrashData.features.filter(feature => {
                 const props = feature.properties;
-                return props.crash_year === currentYear && props.crash_month === currentMonth;
+                return props.crash_year === currentYear && props.crash_month === currentMonth && props.timescale === 'monthly';
             });
             break;
             
         case 'yearly':
-            // filteredFeatures = allCrashData.features.filter(feature => {
-            //     const props = feature.properties;
-            //     return props.crash_year === currentYear;
-            // });
-            // break;
-
-            const yearlyFeatures = allCrashData.features.filter(feature => {
+            filteredFeatures = allCrashData.features.filter(feature => {
                 const props = feature.properties;
-                return props.crash_year === currentYear;
+                return props.crash_year === currentYear && props.timescale === 'yearly';
             });
-            
-            // Group by location and sum collision counts
-            const locationGroups = {};
-            yearlyFeatures.forEach(feature => {
-                const coords = feature.geometry.coordinates.join(','); // Use coordinates as key
-                
-                if (!locationGroups[coords]) {
-                    locationGroups[coords] = {
-                        ...feature,
-                        properties: {
-                            ...feature.properties,
-                            collision_count: feature.properties.collision_count || 0,
-                            number_of_persons_injured: feature.properties.number_of_persons_injured || 0,
-                            number_of_persons_killed: feature.properties.number_of_persons_killed || 0
-                        }
-                    };
-                } else {
-                    // Sum the values
-                    locationGroups[coords].properties.collision_count += feature.properties.collision_count || 0;
-                    locationGroups[coords].properties.number_of_persons_injured += feature.properties.number_of_persons_injured || 0;
-                    locationGroups[coords].properties.number_of_persons_killed += feature.properties.number_of_persons_killed || 0;
-                }
-            });
-            
-            filteredFeatures = Object.values(locationGroups);
             break;
+            
         case 'all':
-            const allFeatures = allCrashData.features.filter(feature => {
+            filteredFeatures = allCrashData.features.filter(feature => {
                 const props = feature.properties;
-                return props;
+                return props.timescale === 'all';
             });
-            
-            // Group by location and sum collision counts
-            const locationGroupsAll = {};
-            allFeatures.forEach(feature => {
-                const coords = feature.geometry.coordinates.join(','); // Use coordinates as key
-                
-                if (!locationGroupsAll[coords]) {
-                    locationGroupsAll[coords] = {
-                        ...feature,
-                        properties: {
-                            ...feature.properties,
-                            collision_count: feature.properties.collision_count || 0,
-                            number_of_persons_injured: feature.properties.number_of_persons_injured || 0,
-                            number_of_persons_killed: feature.properties.number_of_persons_killed || 0
-                        }
-                    };
-                } else {
-                    // Sum the values
-                    locationGroupsAll[coords].properties.collision_count += feature.properties.collision_count || 0;
-                    locationGroupsAll[coords].properties.number_of_persons_injured += feature.properties.number_of_persons_injured || 0;
-                    locationGroupsAll[coords].properties.number_of_persons_killed += feature.properties.number_of_persons_killed || 0;
-                }
-            });
-            
-            filteredFeatures = Object.values(locationGroupsAll);
             break;
     }
     
@@ -231,6 +177,8 @@ function updateCrashDataForTimeScale() {
         features: filteredFeatures
     };
     
+    console.log(filteredCrashData);
+
     // Update map source
     if (map.getSource('intersection-crashes')) {
         map.getSource('intersection-crashes').setData(filteredCrashData);
@@ -508,21 +456,21 @@ async function loadCrashDataFromFile() {
         }
         
         // Validate that features have required properties
-        const requiredProperties = ['crash_year', 'crash_month'];
-        const validFeatures = data.features.filter(feature => {
-            const props = feature.properties;
-            return requiredProperties.every(prop => props && props[prop] !== undefined && props[prop] !== null);
-        });
+        // const requiredProperties = ['crash_year', 'crash_month'];
+        // const validFeatures = data.features.filter(feature => {
+        //     const props = feature.properties;
+        //     return requiredProperties.every(prop => props && props[prop] !== undefined && props[prop] !== null);
+        // });
         
-        if (validFeatures.length === 0) {
-            console.warn('No valid crash features found in data');
-        }
+        // if (validFeatures.length === 0) {
+        //     console.warn('No valid crash features found in data');
+        // }
         
-        console.log(`Loaded ${validFeatures.length} crash records from GeoJSON file`);
+        console.log(`Loaded ${data.features.length} crash records from GeoJSON file`);
         
         return {
             type: 'FeatureCollection',
-            features: validFeatures
+            features: data.features
         };
         
     } catch (error) {
